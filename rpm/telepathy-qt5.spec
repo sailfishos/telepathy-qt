@@ -149,6 +149,9 @@ export QT_SELECT=5
 %{_libdir}/pkgconfig/TelepathyQt5.pc
 %{_includedir}/telepathy-qt5/TelepathyQt/*
 %{_libdir}/cmake/TelepathyQt5/*.cmake
+%{_libdir}/cmake/TelepathyQt5Service/TelepathyQt5ServiceConfig.cmake
+%{_libdir}/cmake/TelepathyQt5Service/TelepathyQt5ServiceConfigVersion.cmake
+%{_libdir}/pkgconfig/TelepathyQt5Service.pc
 # << files devel
 
 %files farstream
