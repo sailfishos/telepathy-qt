@@ -1,6 +1,6 @@
 Name:       telepathy-qt5
 Summary:    Qt 5 Telepathy library
-Version:    0.9.6.1
+Version:    0.9.7
 Release:    1
 Group:      System/Libraries
 License:    GPLv2
@@ -118,10 +118,12 @@ export QT_SELECT=5
 %files
 %defattr(-,root,root,-)
 %{_libdir}/libtelepathy-qt5.so.*
+%{_libdir}/libtelepathy-qt5-service.so.*
 
 %files devel
 %defattr(-,root,root,-)
 %{_libdir}/libtelepathy-qt5.so
+%{_libdir}/libtelepathy-qt5-service.so
 %{_libdir}/pkgconfig/TelepathyQt5.pc
 %{_includedir}/telepathy-qt5/TelepathyQt/*
 %{_libdir}/cmake/TelepathyQt5/*.cmake
