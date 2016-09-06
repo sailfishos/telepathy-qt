@@ -111,7 +111,7 @@ void TestContactsCapabilities::testCapabilities()
     QStringList ids = QStringList() << QLatin1String("alice")
         << QLatin1String("bob") << QLatin1String("chris");
 
-    gboolean supportTextChat[] = { TRUE, FALSE, FALSE };
+    bool supportTextChat[] = { true, false, false};
 
     TpHandleRepoIface *serviceRepo =
         tp_base_connection_get_handles(TP_BASE_CONNECTION(mConn->service()),

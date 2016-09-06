@@ -223,7 +223,9 @@ function(tpqt_client_generator spec group pretty_include namespace)
         WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
 
         DEPENDS ${CMAKE_SOURCE_DIR}/tools/libqtcodegen.py
-                ${CMAKE_SOURCE_DIR}/tools/qt-client-gen.py)
+                ${CMAKE_SOURCE_DIR}/tools/qt-client-gen.py
+                ${CMAKE_CURRENT_BINARY_DIR}/_gen/stable-spec.xml
+                ${CMAKE_CURRENT_BINARY_DIR}/_gen/spec-${spec}.xml)
     add_custom_target(generate_cli-${spec}-body DEPENDS ${CMAKE_CURRENT_BINARY_DIR}/_gen/cli-${spec}-body.hpp)
     add_dependencies(all-generated-sources generate_cli-${spec}-body)
 
@@ -259,7 +261,9 @@ function(tpqt_future_client_generator spec namespace)
         WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
 
         DEPENDS ${CMAKE_SOURCE_DIR}/tools/libqtcodegen.py
-                ${CMAKE_SOURCE_DIR}/tools/qt-client-gen.py)
+                ${CMAKE_SOURCE_DIR}/tools/qt-client-gen.py
+                ${CMAKE_CURRENT_BINARY_DIR}/_gen/future-spec.xml
+                ${CMAKE_CURRENT_BINARY_DIR}/_gen/future-${spec}.xml)
     add_custom_target(generate_future-${spec}-body DEPENDS ${CMAKE_CURRENT_BINARY_DIR}/_gen/future-${spec}-body.hpp)
     add_dependencies(all-generated-sources generate_future-${spec}-body)
 
@@ -294,7 +298,9 @@ function(tpqt_service_generator spec group pretty_include namespace)
         WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
 
         DEPENDS ${CMAKE_SOURCE_DIR}/tools/libqtcodegen.py
-                ${CMAKE_SOURCE_DIR}/tools/qt-svc-gen.py)
+                ${CMAKE_SOURCE_DIR}/tools/qt-svc-gen.py
+                ${CMAKE_CURRENT_BINARY_DIR}/_gen/stable-spec.xml
+                ${CMAKE_CURRENT_BINARY_DIR}/_gen/spec-svc-${spec}.xml)
     add_custom_target(generate_service-${spec}-body DEPENDS ${CMAKE_CURRENT_BINARY_DIR}/_gen/svc-${spec}.cpp)
     add_dependencies(all-generated-service-sources generate_service-${spec}-body)
 
@@ -419,7 +425,6 @@ macro(tpqt_add_dbus_unit_test _fancyName _name)
     set(with_session_bus ${CMAKE_CURRENT_BINARY_DIR}/runDbusTest.sh)
     add_test(${_fancyName} ${SH} ${with_session_bus} ${CMAKE_CURRENT_BINARY_DIR}/test-${_name})
     list(APPEND _telepathy_qt_test_cases test-${_name})
-    list(APPEND _telepathy_qt_test_cases_dbus test-${_name})
 
     # Valgrind and Callgrind targets
     _tpqt_add_check_targets(${_fancyName} ${_name} ${with_session_bus} ${CMAKE_CURRENT_BINARY_DIR}/test-${_name})
