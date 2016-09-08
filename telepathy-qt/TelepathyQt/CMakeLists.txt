@@ -860,10 +860,12 @@ if(ENABLE_SERVICE_SUPPORT)
         base-connection-manager.cpp
         base-connection.cpp
         base-channel.cpp
+        base-debug.cpp
         base-protocol.cpp
         dbus-error.cpp
         dbus-object.cpp
         dbus-service.cpp
+        io-device.cpp
         abstract-adaptor.cpp)
 
     set(telepathy_qt_service_HEADERS
@@ -879,6 +881,8 @@ if(ENABLE_SERVICE_SUPPORT)
         base-connection.h
         BaseChannel
         base-channel.h
+        BaseDebug
+        base-debug.h
         BaseProtocol
         BaseProtocolAddressingInterface
         BaseProtocolAvatarsInterface
@@ -890,6 +894,8 @@ if(ENABLE_SERVICE_SUPPORT)
         dbus-object.h
         DBusService
         dbus-service.h
+        IODevice
+        io-device.h
         ServiceTypes
         service-types.h)
 
@@ -911,9 +917,12 @@ if(ENABLE_SERVICE_SUPPORT)
         base-channel-internal.h
         base-connection.h
         base-connection-internal.h
+        base-debug.h
+        base-debug-internal.h
         base-protocol.h
         base-protocol-internal.h
         dbus-object.h
+        io-device.h
         dbus-service.h)
 
     add_custom_target(all-generated-service-sources)
@@ -922,7 +931,9 @@ if(ENABLE_SERVICE_SUPPORT)
         svc-channel
         svc-call
         svc-connection
-        svc-connection-manager)
+        svc-connection-manager
+        svc-debug
+        )
     foreach(spec ${SPECS})
         tpqt_xincludator(${spec}-spec-xincludator ${CMAKE_CURRENT_SOURCE_DIR}/${spec}.xml ${CMAKE_CURRENT_BINARY_DIR}/_gen/spec-${spec}.xml
                          DEPENDS stable-typesgen)
@@ -939,6 +950,7 @@ if(ENABLE_SERVICE_SUPPORT)
     tpqt_service_generator(svc-call servicecall Channel Tp::Service DEPENDS svc-call-spec-xincludator)
     tpqt_service_generator(svc-connection serviceconn Connection Tp::Service DEPENDS svc-connection-spec-xincludator)
     tpqt_service_generator(svc-connection-manager servicecm ConnectionManager Tp::Service DEPENDS svc-connection-manager-spec-xincludator)
+    tpqt_service_generator(svc-debug servicecm Debug Tp::Service DEPENDS svc-debug-spec-xincludator)
 
     if (TARGET doxygen-doc)
         add_dependencies(doxygen-doc all-generated-service-sources)
@@ -950,8 +962,15 @@ if(ENABLE_SERVICE_SUPPORT)
     #else (ENABLE_COMPILER_COVERAGE)
     #    add_library(telepathy-qt${QT_VERSION_MAJOR}-service SHARED ${telepathy_qt_service_SRCS})
     #endif (ENABLE_COMPILER_COVERAGE)
-    # lets build a static only library until we have a stable API/ABI
-    add_library(telepathy-qt${QT_VERSION_MAJOR}-service STATIC ${telepathy_qt_service_SRCS})
+
+    if(FORCE_STATIC_SERVICE_LIBRARY)
+        set(SERVICE_LIBRARY_TYPE STATIC)
+    else(FORCE_STATIC_SERVICE_LIBRARY)
+        set(SERVICE_LIBRARY_TYPE SHARED)
+    endif(FORCE_STATIC_SERVICE_LIBRARY)
+
+    add_library(telepathy-qt${QT_VERSION_MAJOR}-service ${SERVICE_LIBRARY_TYPE} ${telepathy_qt_service_SRCS})
+    add_dependencies(telepathy-qt${QT_VERSION_MAJOR}-service stable-typesgen future-typesgen)
 
     # generate service moc files
     foreach(moc_src ${telepathy_qt_service_MOC_SRCS})
@@ -969,11 +988,12 @@ if(ENABLE_SERVICE_SUPPORT)
     target_link_libraries(telepathy-qt${QT_VERSION_MAJOR}-service
         ${QT_QTDBUS_LIBRARY}
         ${QT_QTCORE_LIBRARY}
+        telepathy-qt${QT_VERSION_MAJOR}
         ${TP_QT_LIBRARY_LINKER_FLAGS})
 
     # Set the correct version number
     set_target_properties(telepathy-qt${QT_VERSION_MAJOR}-service PROPERTIES
-                                                 SOVERSION ${TP_QT_ABI_VERSION}
+                                                 SOVERSION ${TP_QT_SERVICE_ABI_VERSION}
                                                  VERSION ${TP_QT_LIBRARY_VERSION})
 
     # Install the library - watch out for the correct components

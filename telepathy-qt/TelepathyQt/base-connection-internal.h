@@ -131,6 +131,8 @@ public:
 private Q_SLOTS:
     void getContactAttributes(const Tp::UIntList &handles, const QStringList &interfaces, bool hold,
                               const Tp::Service::ConnectionInterfaceContactsAdaptor::GetContactAttributesContextPtr &context);
+    void getContactByID(const QString &identifier, const QStringList &interfaces,
+                        const Tp::Service::ConnectionInterfaceContactsAdaptor::GetContactByIDContextPtr &context);
 public:
     BaseConnectionContactsInterface *mInterface;
 };
@@ -316,6 +318,48 @@ Q_SIGNALS:
 
 private:
     BaseConnectionAvatarsInterface *mInterface;
+};
+
+class TP_QT_NO_EXPORT BaseConnectionClientTypesInterface::Adaptee : public QObject
+{
+    Q_OBJECT
+
+public:
+    Adaptee(BaseConnectionClientTypesInterface *interface);
+    ~Adaptee();
+
+private Q_SLOTS:
+    void getClientTypes(const Tp::UIntList &contacts,
+            const Tp::Service::ConnectionInterfaceClientTypesAdaptor::GetClientTypesContextPtr &context);
+    void requestClientTypes(uint contact,
+            const Tp::Service::ConnectionInterfaceClientTypesAdaptor::RequestClientTypesContextPtr &context);
+
+Q_SIGNALS:
+    void clientTypesUpdated(uint contact, const QStringList &clientTypes);
+
+private:
+    BaseConnectionClientTypesInterface *mInterface;
+};
+
+class TP_QT_NO_EXPORT BaseConnectionContactCapabilitiesInterface::Adaptee : public QObject
+{
+    Q_OBJECT
+
+public:
+    Adaptee(BaseConnectionContactCapabilitiesInterface *interface);
+    ~Adaptee();
+
+private Q_SLOTS:
+    void updateCapabilities(const Tp::HandlerCapabilitiesList &handlerCapabilities,
+            const Tp::Service::ConnectionInterfaceContactCapabilitiesAdaptor::UpdateCapabilitiesContextPtr &context);
+    void getContactCapabilities(const Tp::UIntList &handles,
+            const Tp::Service::ConnectionInterfaceContactCapabilitiesAdaptor::GetContactCapabilitiesContextPtr &context);
+
+Q_SIGNALS:
+    void contactCapabilitiesChanged(const Tp::ContactCapabilitiesMap &caps);
+
+private:
+    BaseConnectionContactCapabilitiesInterface *mInterface;
 };
 
 }

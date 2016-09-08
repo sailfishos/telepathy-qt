@@ -57,6 +57,8 @@ public:
     bool registerObject(DBusError *error = NULL);
     virtual QString uniqueName() const;
 
+    Tp::BaseConnection *connection() const;
+
     QString channelType() const;
     QList<AbstractChannelInterfacePtr> interfaces() const;
     AbstractChannelInterfacePtr interface(const QString &interfaceName) const;
@@ -100,6 +102,10 @@ class TP_QT_EXPORT AbstractChannelInterface : public AbstractDBusServiceInterfac
 public:
     AbstractChannelInterface(const QString &interfaceName);
     virtual ~AbstractChannelInterface();
+
+protected:
+    virtual void close();
+    virtual void setBaseChannel(BaseChannel *channel);
 
 private:
     friend class BaseChannel;
@@ -207,6 +213,89 @@ private:
                                  Tp::UIntList messageTypes,
                                  uint messagePartSupportFlags,
                                  uint deliveryReportingSupport);
+    void createAdaptor();
+
+    class Adaptee;
+    friend class Adaptee;
+    struct Private;
+    friend struct Private;
+    Private *mPriv;
+};
+
+class TP_QT_EXPORT BaseChannelFileTransferType : public AbstractChannelInterface
+{
+    Q_OBJECT
+    Q_DISABLE_COPY(BaseChannelFileTransferType)
+
+public:
+    enum Direction {
+        Incoming,
+        Outgoing
+    };
+
+    static BaseChannelFileTransferTypePtr create(const QVariantMap &request)
+    {
+        return BaseChannelFileTransferTypePtr(new BaseChannelFileTransferType(request));
+    }
+    template<typename BaseChannelFileTransferTypeSubclass>
+    static SharedPtr<BaseChannelFileTransferTypeSubclass> create(const QVariantMap &request)
+    {
+        return SharedPtr<BaseChannelFileTransferTypeSubclass>(
+                new BaseChannelFileTransferTypeSubclass(request));
+    }
+
+    virtual ~BaseChannelFileTransferType();
+
+    QVariantMap immutableProperties() const;
+    Direction direction() const;
+
+    QString contentType() const;
+    QString filename() const;
+    qulonglong size() const;
+    uint contentHashType() const;
+    QString contentHash() const;
+    QString description() const;
+    QDateTime date() const;
+    virtual Tp::SupportedSocketMap availableSocketTypes() const;
+
+    uint state() const;
+    void setState(uint state, uint reason);
+
+    qulonglong transferredBytes() const;
+    void setTransferredBytes(qulonglong count);
+    qulonglong initialOffset() const;
+
+    QString uri() const;
+
+    QString fileCollection() const;
+    void setFileCollection(const QString &fileCollection);
+
+    bool remoteAcceptFile(QIODevice *output, qulonglong offset);
+    bool remoteProvideFile(QIODevice *input, qulonglong deviceOffset = 0);
+
+Q_SIGNALS:
+    void stateChanged(uint state, uint reason);
+    void uriDefined(const QString &uri);
+
+protected:
+    BaseChannelFileTransferType(const QVariantMap &request);
+
+    virtual bool createSocket(uint addressType, uint accessControl, const QDBusVariant &accessControlParam, DBusError *error);
+    virtual QDBusVariant socketAddress() const;
+
+    void setClientSocket(QIODevice *socket);
+
+    void close(); // Add Q_DECL_OVERRIDE in Qt5
+
+private Q_SLOTS:
+    TP_QT_NO_EXPORT void onSocketConnection();
+    TP_QT_NO_EXPORT void doTransfer();
+    TP_QT_NO_EXPORT void onBytesWritten(qint64 count);
+
+private:
+    TP_QT_NO_EXPORT void setUri(const QString &uri);
+    TP_QT_NO_EXPORT void tryToOpenAndTransfer();
+
     void createAdaptor();
 
     class Adaptee;
@@ -531,31 +620,55 @@ class TP_QT_EXPORT BaseChannelGroupInterface : public AbstractChannelInterface
     Q_DISABLE_COPY(BaseChannelGroupInterface)
 
 public:
-    static BaseChannelGroupInterfacePtr create(ChannelGroupFlags initialFlags, uint selfHandle) {
-        return BaseChannelGroupInterfacePtr(new BaseChannelGroupInterface(initialFlags, selfHandle));
+    static BaseChannelGroupInterfacePtr create()
+    {
+        return BaseChannelGroupInterfacePtr(new BaseChannelGroupInterface());
     }
     template<typename BaseChannelGroupInterfaceSubclass>
-    static SharedPtr<BaseChannelGroupInterfaceSubclass> create(ChannelGroupFlags initialFlags, uint selfHandle) {
+    static SharedPtr<BaseChannelGroupInterfaceSubclass> create()
+    {
         return SharedPtr<BaseChannelGroupInterfaceSubclass>(
-                   new BaseChannelGroupInterfaceSubclass(initialFlags, selfHandle));
+                new BaseChannelGroupInterfaceSubclass());
     }
+
     virtual ~BaseChannelGroupInterface();
 
     QVariantMap immutableProperties() const;
 
-    typedef Callback3<void, const Tp::UIntList&, const QString&, DBusError*> RemoveMembersCallback;
-    void setRemoveMembersCallback(const RemoveMembersCallback &cb);
+    Tp::ChannelGroupFlags groupFlags() const;
+    void setGroupFlags(const Tp::ChannelGroupFlags &flags);
 
-    typedef Callback3<void, const Tp::UIntList&, const QString&, DBusError*> AddMembersCallback;
+    Tp::UIntList members() const;
+    void setMembers(const Tp::UIntList &members, const QVariantMap &details);
+    void setMembers(const Tp::UIntList &members, const Tp::LocalPendingInfoList &localPending, const Tp::UIntList &remotePending, const QVariantMap &details);
+
+    Tp::HandleOwnerMap handleOwners() const;
+    void setHandleOwners(const Tp::HandleOwnerMap &handleOwners);
+
+    Tp::LocalPendingInfoList localPendingMembers() const;
+    void setLocalPendingMembers(const Tp::LocalPendingInfoList &localPendingMembers);
+
+    Tp::UIntList remotePendingMembers() const;
+    void setRemotePendingMembers(const Tp::UIntList &remotePendingMembers);
+
+    uint selfHandle() const;
+    void setSelfHandle(uint selfHandle);
+
+    Tp::HandleIdentifierMap memberIdentifiers() const;
+
+    typedef Callback3<void, const Tp::UIntList &, const QString &, DBusError*> AddMembersCallback;
     void setAddMembersCallback(const AddMembersCallback &cb);
+    void addMembers(const Tp::UIntList &contacts, const QString &message, DBusError *error);
 
-    /* Adds a contact to this group. No-op if already in this group */
-    void addMembers(const Tp::UIntList &handles, const QStringList &identifiers);
-    void removeMembers(const Tp::UIntList &handles);
+    typedef Callback4<void, const Tp::UIntList &, const QString &, uint, DBusError*> RemoveMembersCallback;
+    void setRemoveMembersCallback(const RemoveMembersCallback &cb);
+    void removeMembers(const Tp::UIntList &contacts, const QString &message, uint reason, DBusError *error);
 
-private Q_SLOTS:
+protected:
+    BaseChannelGroupInterface();
+    void setBaseChannel(BaseChannel *channel);
+
 private:
-    BaseChannelGroupInterface(ChannelGroupFlags initialFlags, uint selfHandle);
     void createAdaptor();
 
     class Adaptee;

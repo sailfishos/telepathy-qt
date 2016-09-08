@@ -157,6 +157,60 @@ public:
     BaseChannelMessagesInterface *mInterface;
 };
 
+class TP_QT_NO_EXPORT BaseChannelFileTransferType::Adaptee : public QObject
+{
+    Q_OBJECT
+    Q_PROPERTY(uint state READ state)
+    Q_PROPERTY(QString contentType READ contentType)
+    Q_PROPERTY(QString filename READ filename)
+    Q_PROPERTY(qulonglong size READ size)
+    Q_PROPERTY(uint contentHashType READ contentHashType)
+    Q_PROPERTY(QString contentHash READ contentHash)
+    Q_PROPERTY(QString description READ description)
+    Q_PROPERTY(qlonglong date READ date)
+    Q_PROPERTY(Tp::SupportedSocketMap availableSocketTypes READ availableSocketTypes)
+    Q_PROPERTY(qulonglong transferredBytes READ transferredBytes)
+    Q_PROPERTY(qulonglong initialOffset READ initialOffset)
+    Q_PROPERTY(QString uri READ uri WRITE setUri)
+    Q_PROPERTY(QString fileCollection READ fileCollection)
+
+public:
+    Adaptee(BaseChannelFileTransferType *interface);
+    ~Adaptee();
+
+    uint state() const;
+    QString contentType() const;
+    QString filename() const;
+    qulonglong size() const;
+    uint contentHashType() const;
+    QString contentHash() const;
+    QString description() const;
+    qlonglong date() const;
+    Tp::SupportedSocketMap availableSocketTypes() const;
+    qulonglong transferredBytes() const;
+    qulonglong initialOffset() const;
+    QString uri() const;
+    QString fileCollection() const;
+
+public Q_SLOTS:
+    void setUri(const QString &uri);
+
+private Q_SLOTS:
+    void acceptFile(uint addressType, uint accessControl, const QDBusVariant &accessControlParam, qulonglong offset,
+            const Tp::Service::ChannelTypeFileTransferAdaptor::AcceptFileContextPtr &context);
+    void provideFile(uint addressType, uint accessControl, const QDBusVariant &accessControlParam,
+            const Tp::Service::ChannelTypeFileTransferAdaptor::ProvideFileContextPtr &context);
+
+Q_SIGNALS:
+    void fileTransferStateChanged(uint state, uint reason);
+    void transferredBytesChanged(qulonglong count);
+    void initialOffsetDefined(qulonglong initialOffset);
+    void uriDefined(const QString &uri);
+
+private:
+    BaseChannelFileTransferType *mInterface;
+};
+
 class TP_QT_NO_EXPORT BaseChannelRoomListType::Adaptee : public QObject
 {
     Q_OBJECT
@@ -317,9 +371,11 @@ class TP_QT_NO_EXPORT BaseChannelGroupInterface::Adaptee : public QObject
     Q_PROPERTY(Tp::UIntList remotePendingMembers READ remotePendingMembers)
     Q_PROPERTY(uint selfHandle READ selfHandle)
     Q_PROPERTY(Tp::HandleIdentifierMap memberIdentifiers READ memberIdentifiers)
+
 public:
     Adaptee(BaseChannelGroupInterface *interface);
     ~Adaptee();
+
     uint groupFlags() const;
     Tp::HandleOwnerMap handleOwners() const;
     Tp::LocalPendingInfoList localPendingMembers() const;
@@ -327,26 +383,25 @@ public:
     Tp::UIntList remotePendingMembers() const;
     uint selfHandle() const;
     Tp::HandleIdentifierMap memberIdentifiers() const;
-public slots:
-    void addMembers(const Tp::UIntList &contacts, const QString &message, const Tp::Service::ChannelInterfaceGroupAdaptor::AddMembersContextPtr &context);
-    void getAllMembers(const Tp::Service::ChannelInterfaceGroupAdaptor::GetAllMembersContextPtr &context);
-    void getGroupFlags(const Tp::Service::ChannelInterfaceGroupAdaptor::GetGroupFlagsContextPtr &context);
-    void getHandleOwners(const Tp::UIntList &handles, const Tp::Service::ChannelInterfaceGroupAdaptor::GetHandleOwnersContextPtr &context);
-    void getLocalPendingMembers(const Tp::Service::ChannelInterfaceGroupAdaptor::GetLocalPendingMembersContextPtr &context);
-    void getLocalPendingMembersWithInfo(const Tp::Service::ChannelInterfaceGroupAdaptor::GetLocalPendingMembersWithInfoContextPtr &context);
-    void getMembers(const Tp::Service::ChannelInterfaceGroupAdaptor::GetMembersContextPtr &context);
-    void getRemotePendingMembers(const Tp::Service::ChannelInterfaceGroupAdaptor::GetRemotePendingMembersContextPtr &context);
-    void getSelfHandle(const Tp::Service::ChannelInterfaceGroupAdaptor::GetSelfHandleContextPtr &context);
-    void removeMembers(const Tp::UIntList &contacts, const QString &message, const Tp::Service::ChannelInterfaceGroupAdaptor::RemoveMembersContextPtr &context);
-    void removeMembersWithReason(const Tp::UIntList &contacts, const QString &message, uint reason, const Tp::Service::ChannelInterfaceGroupAdaptor::RemoveMembersWithReasonContextPtr &context);
-signals:
+
+private Q_SLOTS:
+    void addMembers(const Tp::UIntList &contacts, const QString &message,
+            const Tp::Service::ChannelInterfaceGroupAdaptor::AddMembersContextPtr &context);
+    void removeMembers(const Tp::UIntList &contacts, const QString &message,
+            const Tp::Service::ChannelInterfaceGroupAdaptor::RemoveMembersContextPtr &context);
+    void removeMembersWithReason(const Tp::UIntList &contacts, const QString &message, uint reason,
+            const Tp::Service::ChannelInterfaceGroupAdaptor::RemoveMembersWithReasonContextPtr &context);
+
+Q_SIGNALS:
+    void handleOwnersChanged(const Tp::HandleOwnerMap &added, const Tp::UIntList &removed);
     void handleOwnersChangedDetailed(const Tp::HandleOwnerMap &added, const Tp::UIntList &removed, const Tp::HandleIdentifierMap &identifiers);
+    void selfHandleChanged(uint selfHandle);
     void selfContactChanged(uint selfHandle, const QString &selfID);
     void groupFlagsChanged(uint added, uint removed);
     void membersChanged(const QString &message, const Tp::UIntList &added, const Tp::UIntList &removed, const Tp::UIntList &localPending, const Tp::UIntList &remotePending, uint actor, uint reason);
     void membersChangedDetailed(const Tp::UIntList &added, const Tp::UIntList &removed, const Tp::UIntList &localPending, const Tp::UIntList &remotePending, const QVariantMap &details);
-    //All other signals are deprecated
-public:
+
+private:
     BaseChannelGroupInterface *mInterface;
 };
 
@@ -357,7 +412,7 @@ class TP_QT_NO_EXPORT BaseChannelRoomInterface::Adaptee : public QObject
     Q_PROPERTY(QString server READ server)
     Q_PROPERTY(QString creator READ creator)
     Q_PROPERTY(uint creatorHandle READ creatorHandle)
-    Q_PROPERTY(QDateTime creationTimestamp READ creationTimestamp)
+    Q_PROPERTY(qlonglong creationTimestamp READ creationTimestamp)
 
 public:
     Adaptee(BaseChannelRoomInterface *interface);
@@ -367,7 +422,7 @@ public:
     QString server() const;
     QString creator() const;
     uint creatorHandle() const;
-    QDateTime creationTimestamp() const;
+    qlonglong creationTimestamp() const;
 
 private:
     BaseChannelRoomInterface *mInterface;

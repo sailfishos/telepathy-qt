@@ -93,6 +93,7 @@ tpqt_add_dbus_unit_test(Types types)
 if(ENABLE_SERVICE_SUPPORT)
     tpqt_add_dbus_unit_test(BaseConnectionManager base-cm telepathy-qt${QT_VERSION_MAJOR}-service)
     tpqt_add_dbus_unit_test(BaseProtocol base-protocol telepathy-qt${QT_VERSION_MAJOR}-service)
+    tpqt_add_dbus_unit_test(BaseChannelFileTransferType base-filetransfer telepathy-qt${QT_VERSION_MAJOR}-service)
 endif(ENABLE_SERVICE_SUPPORT)
 
 # Make check target. In case of check, output on failure and put it into a log
@@ -100,9 +101,3 @@ endif(ENABLE_SERVICE_SUPPORT)
 add_custom_target(check ctest --output-on-failure -O test.log
                   WORKING_DIRECTORY ${CMAKE_BINARY_DIR}/tests)
 add_dependencies(check check-local ${_telepathy_qt_test_cases})
-
-# Add Nemo install target for tests
-INSTALL(TARGETS ${_telepathy_qt_test_cases_dbus} RUNTIME DESTINATION ${NEMO_TESTS_DIR_BIN})
-file(WRITE ${CMAKE_CURRENT_BINARY_DIR}/dbus-tests.list "${_telepathy_qt_test_cases_dbus}")
-INSTALL(FILES ${CMAKE_CURRENT_BINARY_DIR}/dbus-tests.list DESTINATION ${NEMO_TESTS_DIR})
-INSTALL(FILES ${CMAKE_SOURCE_DIR}/tools/with-session-bus.sh DESTINATION ${NEMO_TESTS_DIR_BIN} PERMISSIONS OWNER_READ OWNER_WRITE OWNER_EXECUTE GROUP_READ GROUP_EXECUTE WORLD_READ WORLD_EXECUTE)

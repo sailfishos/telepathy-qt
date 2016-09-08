@@ -34,6 +34,7 @@
 #include <QMetaType>
 #include <QSharedDataPointer>
 #include <QString>
+#include <QVariantMap>
 
 namespace Tp
 {
@@ -82,6 +83,10 @@ public:
 
     bool hasUri() const;
     QString uri() const;
+
+    QVariantMap createRequest() const;
+    QVariantMap createRequest(const QString &contactIdentifier) const;
+    QVariantMap createRequest(uint handle) const;
 
 private:
     struct Private;

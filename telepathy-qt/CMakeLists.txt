@@ -1,34 +1,6 @@
 project(TelepathyQt)
 
-cmake_minimum_required(VERSION 2.6)
-
-# CMake policies are used for backwards compatibilty. Setting a policy to a behavior lets newer
-# CMake versions where some behaviors changed behave in a way or another. In our specific case,
-# From CMake's documentation:
-#
-# In CMake 2.6.2 and below, CMake Policy settings in scripts loaded by
-# the include() and find_package() commands would affect the includer.
-# Explicit invocations of cmake_policy(PUSH) and cmake_policy(POP) were
-# required to isolate policy changes and protect the includer.  While
-# some scripts intend to affect the policies of their includer, most do
-# not.  In CMake 2.6.3 and above, include() and find_package() by
-# default PUSH and POP an entry on the policy stack around an included
-# script, but provide a NO_POLICY_SCOPE option to disable it.  This
-# policy determines whether or not to imply NO_POLICY_SCOPE for
-# compatibility.  The OLD behavior for this policy is to imply
-# NO_POLICY_SCOPE for include() and find_package() commands.  The NEW
-# behavior for this policy is to allow the commands to do their default
-# cmake_policy PUSH and POP.
-#
-# This policy was introduced in CMake version 2.6.3.  CMake version
-# 2.8.2 warns when the policy is not set and uses OLD behavior.  Use the
-# cmake_policy command to set it to OLD or NEW explicitly.
-#
-# Whenever our cmake_minimum_required version bumps up to 2.7 or 2.6.3, this policy setting can
-# hence be removed.
-if(POLICY CMP0011)
-    cmake_policy(SET CMP0011 NEW)
-endif(POLICY CMP0011)
+cmake_minimum_required(VERSION 2.8.12)
 
 # Making releases:
 #   set the new version number:
@@ -40,8 +12,8 @@ endif(POLICY CMP0011)
 #   set nano_version to 1
 set(TP_QT_MAJOR_VERSION 0)
 set(TP_QT_MINOR_VERSION 9)
-set(TP_QT_MICRO_VERSION 6)
-set(TP_QT_NANO_VERSION  1)
+set(TP_QT_MICRO_VERSION 7)
+set(TP_QT_NANO_VERSION  0)
 
 set(PACKAGE_NAME telepathy-qt)
 
@@ -103,6 +75,8 @@ else (${QT_VERSION_MAJOR} EQUAL 4)
     set(TP_QT_ABI_VERSION 0)
 endif (${QT_VERSION_MAJOR} EQUAL 4)
 
+set(TP_QT_SERVICE_ABI_VERSION 0)
+
 # This variable is used for the library's long version. It is generated dynamically, so don't change its
 # value! Change TP_QT_ABI_VERSION and TP_QT_*_VERSION instead.
 if (${TP_QT_NANO_VERSION} EQUAL 0)
@@ -113,6 +87,8 @@ endif (${TP_QT_NANO_VERSION} EQUAL 0)
 
 # Add an option for compiling tp-qt-service
 option(ENABLE_SERVICE_SUPPORT "Enable compilation of service side bindings for Telepathy-Qt" TRUE)
+# Add an option to select type of service library
+option(FORCE_STATIC_SERVICE_LIBRARY "Force Telepathy-Qt service to be a static library." FALSE)
 # Add an option for compiling examples
 option(ENABLE_EXAMPLES "Enable compilation of examples for Telepathy-Qt" TRUE)
 # Add an option for compiling Farstream
@@ -160,9 +136,9 @@ macro_log_feature(QT_GLIB_SUPPORT "Qt Glib Support"
 # reset flags
 set(CMAKE_REQUIRED_FLAGS "")
 
-# Find python version >= 2.5
-find_package(PythonLibrary REQUIRED)
-set(REQUIRED_PY 2.5)
+# Find python version >= 2.7
+set(REQUIRED_PY 2.7)
+find_package(PythonLibrary ${REQUIRED_PY} REQUIRED)
 if(${PYTHON_SHORT_VERSION} VERSION_GREATER ${REQUIRED_PY} OR ${PYTHON_SHORT_VERSION} VERSION_EQUAL ${REQUIRED_PY})
     message(STATUS "Python ${PYTHON_SHORT_VERSION} found")
 else(${PYTHON_SHORT_VERSION} VERSION_GREATER ${REQUIRED_PY} OR ${PYTHON_SHORT_VERSION} VERSION_EQUAL ${REQUIRED_PY})

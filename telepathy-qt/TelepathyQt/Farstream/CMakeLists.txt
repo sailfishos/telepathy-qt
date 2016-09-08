@@ -2,7 +2,7 @@ if(FARSTREAM_COMPONENTS_FOUND)
     include_directories(${TELEPATHY_FARSTREAM_INCLUDE_DIR}
                         ${TELEPATHY_GLIB_INCLUDE_DIR}
                         ${FARSTREAM_INCLUDE_DIR}
-                        ${GSTREAMER_INCLUDE_DIR}
+                        ${GSTREAMER_INCLUDE_DIRS}
                         ${GLIB2_INCLUDE_DIR}
                         ${LIBXML2_INCLUDE_DIR}
                         ${DBUS_INCLUDE_DIR})
@@ -42,6 +42,7 @@ if(FARSTREAM_COMPONENTS_FOUND)
         ${QT_QTDBUS_LIBRARY}
         ${QT_QTCORE_LIBRARY}
         ${GOBJECT_LIBRARIES}
+        ${GLIB2_LIBRARIES}
         ${TELEPATHY_FARSTREAM_LIBRARIES}
         ${TELEPATHY_GLIB_LIBRARIES}
         telepathy-qt${QT_VERSION_MAJOR}

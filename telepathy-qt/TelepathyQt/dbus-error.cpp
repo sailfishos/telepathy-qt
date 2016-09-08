@@ -71,6 +71,9 @@ DBusError::DBusError(const QString &name, const QString &message)
  */
 DBusError::~DBusError()
 {
+    if (mPriv) {
+        delete mPriv;
+    }
 }
 
 /**
@@ -82,10 +85,9 @@ DBusError::~DBusError()
  */
 bool DBusError::operator==(const DBusError &other) const
 {
-    if (!isValid() || !other.isValid()) {
-        if (!isValid() && !other.isValid()) {
-            return true;
-        }
+    if (!isValid() && !other.isValid()) {
+        return true;
+    } else if (!isValid() || !other.isValid()) {
         return false;
     }
 
@@ -102,15 +104,7 @@ bool DBusError::operator==(const DBusError &other) const
  */
 bool DBusError::operator!=(const DBusError &other) const
 {
-    if (!isValid() || !other.isValid()) {
-        if (!isValid() && !other.isValid()) {
-            return false;
-        }
-        return true;
-    }
-
-    return mPriv->name != other.mPriv->name ||
-        mPriv->message != other.mPriv->message;
+    return !(*this == other);
 }
 
 /**

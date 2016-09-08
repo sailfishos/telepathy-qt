@@ -130,9 +130,16 @@ void BaseConnection::Adaptee::connect(const Tp::Service::ConnectionAdaptor::Conn
 void BaseConnection::Adaptee::disconnect(const Tp::Service::ConnectionAdaptor::DisconnectContextPtr &context)
 {
     debug() << "BaseConnection::Adaptee::disconnect";
-    /* This will remove the connection from the connection manager
+
+    foreach(const BaseChannelPtr &channel, mConnection->mPriv->channels) {
+        /* BaseChannel::closed() signal triggers removeChannel() method call with proper cleanup */
+        channel->close();
+    }
+
+    /* This signal will remove the connection from the connection manager
      * and destroy this object. */
     emit mConnection->disconnected();
+
     context->setFinished();
 }
 
@@ -379,12 +386,20 @@ Tp::BaseChannelPtr BaseConnection::createChannel(const QVariantMap &request, boo
         return BaseChannelPtr();
     }
 
-    BaseChannelPtr channel = mPriv->createChannelCB(request, error);
+    if (request.contains(TP_QT_IFACE_CHANNEL + QLatin1String(".Requested"))) {
+        error->set(TP_QT_ERROR_INVALID_ARGUMENT, QString(QLatin1String("The %1.Requested property must not be presented in the request details.")).arg(TP_QT_IFACE_CHANNEL));
+        return BaseChannelPtr();
+    }
+
+    QVariantMap requestDetails = request;
+    requestDetails[TP_QT_IFACE_CHANNEL + QLatin1String(".Requested")] = suppressHandler;
+
+    BaseChannelPtr channel = mPriv->createChannelCB(requestDetails, error);
     if (error->isValid())
         return BaseChannelPtr();
 
-    QString targetID;
-    if (channel->targetHandle() != 0) {
+    QString targetID = channel->targetID();
+    if ((channel->targetHandle() != 0) && targetID.isEmpty()) {
         QStringList list = mPriv->inspectHandlesCB(channel->targetHandleType(),  UIntList() << channel->targetHandle(), error);
         if (error->isValid()) {
             debug() << "BaseConnection::createChannel: could not resolve handle " << channel->targetHandle();
@@ -393,14 +408,15 @@ Tp::BaseChannelPtr BaseConnection::createChannel(const QVariantMap &request, boo
             debug() << "BaseConnection::createChannel: found targetID " << *list.begin();
             targetID = *list.begin();
         }
+        channel->setTargetID(targetID);
     }
 
     if (request.contains(TP_QT_IFACE_CHANNEL + QLatin1String(".InitiatorHandle"))) {
         channel->setInitiatorHandle(request.value(TP_QT_IFACE_CHANNEL + QLatin1String(".InitiatorHandle")).toUInt());
     }
 
-    QString initiatorID;
-    if (channel->initiatorHandle() != 0) {
+    QString initiatorID = channel->initiatorID();
+    if ((channel->initiatorHandle() != 0) && initiatorID.isEmpty()) {
         QStringList list = mPriv->inspectHandlesCB(HandleTypeContact, UIntList() << channel->initiatorHandle(), error);
         if (error->isValid()) {
             debug() << "BaseConnection::createChannel: could not resolve handle " << channel->initiatorHandle();
@@ -409,10 +425,9 @@ Tp::BaseChannelPtr BaseConnection::createChannel(const QVariantMap &request, boo
             debug() << "BaseConnection::createChannel: found initiatorID " << *list.begin();
             initiatorID = *list.begin();
         }
+        channel->setInitiatorID(initiatorID);
     }
-    channel->setInitiatorID(initiatorID);
-    channel->setTargetID(targetID);
-    channel->setRequested(request.value(TP_QT_IFACE_CHANNEL + QLatin1String(".Requested"), suppressHandler).toBool());
+    channel->setRequested(suppressHandler);
 
     channel->registerObject(error);
     if (error->isValid())
@@ -458,7 +473,7 @@ Tp::UIntList BaseConnection::requestHandles(uint handleType, const QStringList &
 
 Tp::ChannelInfoList BaseConnection::channelsInfo()
 {
-    qDebug() << "BaseConnection::channelsInfo:";
+    debug() << "BaseConnection::channelsInfo:";
     Tp::ChannelInfoList list;
     foreach(const BaseChannelPtr & c, mPriv->channels) {
         Tp::ChannelInfo info;
@@ -466,7 +481,7 @@ Tp::ChannelInfoList BaseConnection::channelsInfo()
         info.channelType = c->channelType();
         info.handle = c->targetHandle();
         info.handleType = c->targetHandleType();
-        qDebug() << "BaseConnection::channelsInfo " << info.channel.path();
+        debug() << "BaseConnection::channelsInfo " << info.channel.path();
         list << info;
     }
     return list;
@@ -531,7 +546,7 @@ Tp::BaseChannelPtr BaseConnection::ensureChannel(const QVariantMap &request, boo
 void BaseConnection::addChannel(BaseChannelPtr channel, bool suppressHandler)
 {
     if (mPriv->channels.contains(channel)) {
-        qDebug() << "BaseConnection::addChannel: Channel already added.";
+        warning() << "BaseConnection::addChannel: Channel already added.";
         return;
     }
 
@@ -641,6 +656,7 @@ bool BaseConnection::plugInterface(const AbstractConnectionInterfacePtr &interfa
 
     debug() << "Interface" << interface->interfaceName() << "plugged";
     mPriv->interfaces.insert(interface->interfaceName(), interface);
+    interface->setBaseConnection(this);
     return true;
 }
 
@@ -767,7 +783,7 @@ bool BaseConnection::matchChannel(const BaseChannelPtr &channel, const QVariantM
 
 /**
  * \class AbstractConnectionInterface
- * \ingroup servicecm
+ * \ingroup serviceconn
  * \headerfile TelepathyQt/base-connection.h <TelepathyQt/BaseConnection>
  *
  * \brief Base class for all the Connection object interface implementations.
@@ -780,6 +796,11 @@ AbstractConnectionInterface::AbstractConnectionInterface(const QString &interfac
 
 AbstractConnectionInterface::~AbstractConnectionInterface()
 {
+}
+
+void AbstractConnectionInterface::setBaseConnection(BaseConnection *connection)
+{
+    Q_UNUSED(connection)
 }
 
 // Conn.I.Requests
@@ -834,7 +855,7 @@ struct TP_QT_NO_EXPORT BaseConnectionRequestsInterface::Private {
 
 /**
  * \class BaseConnectionRequestsInterface
- * \ingroup servicecm
+ * \ingroup serviceconn
  * \headerfile TelepathyQt/base-connection.h <TelepathyQt/BaseConnection>
  *
  * \brief Base class for implementations of Connection.Interface.Requests
@@ -915,7 +936,7 @@ void BaseConnectionRequestsInterface::createChannel(const QVariantMap &request,
         return;
     }
 
-    BaseChannelPtr channel = mPriv->connection->createChannel(request, /* yours */ false, error);
+    BaseChannelPtr channel = mPriv->connection->createChannel(request, /* suppressHandler */ true, error);
 
     if (error->isValid())
         return;
@@ -925,6 +946,20 @@ void BaseConnectionRequestsInterface::createChannel(const QVariantMap &request,
 }
 
 // Conn.I.Contacts
+// The BaseConnectionContactsInterface code is fully or partially generated by the TelepathyQt-Generator.
+struct TP_QT_NO_EXPORT BaseConnectionContactsInterface::Private {
+    Private(BaseConnectionContactsInterface *parent)
+        : connection(0),
+          adaptee(new BaseConnectionContactsInterface::Adaptee(parent))
+    {
+    }
+
+    QStringList contactAttributeInterfaces;
+    GetContactAttributesCallback getContactAttributesCB;
+    BaseConnection *connection;
+    BaseConnectionContactsInterface::Adaptee *adaptee;
+};
+
 BaseConnectionContactsInterface::Adaptee::Adaptee(BaseConnectionContactsInterface *interface)
     : QObject(interface),
       mInterface(interface)
@@ -935,36 +970,42 @@ BaseConnectionContactsInterface::Adaptee::~Adaptee()
 {
 }
 
-void BaseConnectionContactsInterface::Adaptee::getContactAttributes(const Tp::UIntList &handles,
-        const QStringList &interfaces, bool /*hold*/,
+QStringList BaseConnectionContactsInterface::Adaptee::contactAttributeInterfaces() const
+{
+    return mInterface->contactAttributeInterfaces();
+}
+
+void BaseConnectionContactsInterface::Adaptee::getContactAttributes(const Tp::UIntList &handles, const QStringList &interfaces, bool /* hold */,
         const Tp::Service::ConnectionInterfaceContactsAdaptor::GetContactAttributesContextPtr &context)
 {
     DBusError error;
-    ContactAttributesMap contactAttributes = mInterface->getContactAttributes(handles, interfaces, &error);
+    Tp::ContactAttributesMap attributes = mInterface->getContactAttributes(handles, interfaces, &error);
     if (error.isValid()) {
         context->setFinishedWithError(error.name(), error.message());
         return;
     }
-    context->setFinished(contactAttributes);
+    context->setFinished(attributes);
 }
 
-struct TP_QT_NO_EXPORT BaseConnectionContactsInterface::Private {
-    Private(BaseConnectionContactsInterface *parent)
-        : adaptee(new BaseConnectionContactsInterface::Adaptee(parent)) {
-    }
-    QStringList contactAttributeInterfaces;
-    GetContactAttributesCallback getContactAttributesCallback;
-    BaseConnectionContactsInterface::Adaptee *adaptee;
-};
-
-QStringList BaseConnectionContactsInterface::Adaptee::contactAttributeInterfaces() const
+void BaseConnectionContactsInterface::Adaptee::getContactByID(const QString &identifier, const QStringList &interfaces,
+        const Tp::Service::ConnectionInterfaceContactsAdaptor::GetContactByIDContextPtr &context)
 {
-    return mInterface->mPriv->contactAttributeInterfaces;
+    debug() << "BaseConnectionContactsInterface::Adaptee::getContactByID";
+    DBusError error;
+    uint handle;
+    QVariantMap attributes;
+
+    mInterface->getContactByID(identifier, interfaces, handle, attributes, &error);
+    if (error.isValid()) {
+        context->setFinishedWithError(error.name(), error.message());
+        return;
+    }
+    context->setFinished(handle, attributes);
 }
 
 /**
  * \class BaseConnectionContactsInterface
- * \ingroup servicecm
+ * \ingroup serviceconn
  * \headerfile TelepathyQt/base-connection.h <TelepathyQt/BaseConnection>
  *
  * \brief Base class for implementations of Connection.Interface.Contacts
@@ -987,6 +1028,11 @@ BaseConnectionContactsInterface::~BaseConnectionContactsInterface()
     delete mPriv;
 }
 
+void BaseConnectionContactsInterface::setBaseConnection(BaseConnection *connection)
+{
+    mPriv->connection = connection;
+}
+
 /**
  * Return the immutable properties of this interface.
  *
@@ -1003,10 +1049,9 @@ QVariantMap BaseConnectionContactsInterface::immutableProperties() const
     return map;
 }
 
-void BaseConnectionContactsInterface::createAdaptor()
+QStringList BaseConnectionContactsInterface::contactAttributeInterfaces() const
 {
-    (void) new Service::ConnectionInterfaceContactsAdaptor(dbusObject()->dbusConnection(),
-            mPriv->adaptee, dbusObject());
+    return mPriv->contactAttributeInterfaces;
 }
 
 void BaseConnectionContactsInterface::setContactAttributeInterfaces(const QStringList &contactAttributeInterfaces)
@@ -1014,20 +1059,43 @@ void BaseConnectionContactsInterface::setContactAttributeInterfaces(const QStrin
     mPriv->contactAttributeInterfaces = contactAttributeInterfaces;
 }
 
-void BaseConnectionContactsInterface::setGetContactAttributesCallback(const GetContactAttributesCallback &cb)
+void BaseConnectionContactsInterface::createAdaptor()
 {
-    mPriv->getContactAttributesCallback = cb;
+    (void) new Tp::Service::ConnectionInterfaceContactsAdaptor(dbusObject()->dbusConnection(),
+            mPriv->adaptee, dbusObject());
 }
 
-ContactAttributesMap BaseConnectionContactsInterface::getContactAttributes(const Tp::UIntList &handles,
-        const QStringList &interfaces,
-        DBusError *error)
+void BaseConnectionContactsInterface::setGetContactAttributesCallback(const GetContactAttributesCallback &cb)
 {
-    if (!mPriv->getContactAttributesCallback.isValid()) {
+    mPriv->getContactAttributesCB = cb;
+}
+
+Tp::ContactAttributesMap BaseConnectionContactsInterface::getContactAttributes(const Tp::UIntList &handles, const QStringList &interfaces, DBusError *error)
+{
+    if (!mPriv->getContactAttributesCB.isValid()) {
         error->set(TP_QT_ERROR_NOT_IMPLEMENTED, QLatin1String("Not implemented"));
-        return ContactAttributesMap();
+        return Tp::ContactAttributesMap();
     }
-    return mPriv->getContactAttributesCallback(handles, interfaces, error);
+    return mPriv->getContactAttributesCB(handles, interfaces, error);
+}
+
+void BaseConnectionContactsInterface::getContactByID(const QString &identifier, const QStringList &interfaces, uint &handle, QVariantMap &attributes, DBusError *error)
+{
+    const Tp::UIntList handles = mPriv->connection->requestHandles(Tp::HandleTypeContact, QStringList() << identifier, error);
+    if (error->isValid() || handles.isEmpty()) {
+        // The check for empty handles is paranoid, because the error must be set in such case.
+        error->set(TP_QT_ERROR_INVALID_HANDLE, QLatin1String("Could not process ID"));
+        return;
+    }
+
+    const Tp::ContactAttributesMap result = getContactAttributes(handles, interfaces, error);
+
+    if (error->isValid()) {
+        return;
+    }
+
+    handle = handles.first();
+    attributes = result.value(handle);
 }
 
 // Conn.I.SimplePresence
@@ -1056,7 +1124,7 @@ struct TP_QT_NO_EXPORT BaseConnectionSimplePresenceInterface::Private {
 
 /**
  * \class BaseConnectionSimplePresenceInterface
- * \ingroup servicecm
+ * \ingroup serviceconn
  * \headerfile TelepathyQt/base-connection.h <TelepathyQt/BaseConnection>
  *
  * \brief Base class for implementations of Connection.Interface.SimplePresence
@@ -1104,10 +1172,19 @@ void BaseConnectionSimplePresenceInterface::createAdaptor()
 
 void BaseConnectionSimplePresenceInterface::setPresences(const Tp::SimpleContactPresences &presences)
 {
+    Tp::SimpleContactPresences newPresences;
+
     foreach(uint handle, presences.keys()) {
+        if (mPriv->presences.contains(handle) && mPriv->presences.value(handle) == presences.value(handle)) {
+            continue;
+        }
         mPriv->presences[handle] = presences[handle];
+        newPresences[handle] = presences[handle];
     }
-    QMetaObject::invokeMethod(mPriv->adaptee, "presencesChanged", Q_ARG(Tp::SimpleContactPresences, presences)); //Can simply use emit in Qt5
+
+    if (!newPresences.isEmpty()) {
+        QMetaObject::invokeMethod(mPriv->adaptee, "presencesChanged", Q_ARG(Tp::SimpleContactPresences, newPresences)); //Can simply use emit in Qt5
+    }
 }
 
 void BaseConnectionSimplePresenceInterface::setSetPresenceCallback(const SetPresenceCallback &cb)
@@ -1271,7 +1348,7 @@ bool BaseConnectionContactListInterface::Adaptee::downloadAtConnection() const
 void BaseConnectionContactListInterface::Adaptee::getContactListAttributes(const QStringList &interfaces, bool hold,
         const Tp::Service::ConnectionInterfaceContactListAdaptor::GetContactListAttributesContextPtr &context)
 {
-    qDebug() << "BaseConnectionContactListInterface::Adaptee::getContactListAttributes";
+    debug() << "BaseConnectionContactListInterface::Adaptee::getContactListAttributes";
     DBusError error;
     Tp::ContactAttributesMap attributes = mInterface->getContactListAttributes(interfaces, hold, &error);
     if (error.isValid()) {
@@ -1284,7 +1361,7 @@ void BaseConnectionContactListInterface::Adaptee::getContactListAttributes(const
 void BaseConnectionContactListInterface::Adaptee::requestSubscription(const Tp::UIntList &contacts, const QString &message,
         const Tp::Service::ConnectionInterfaceContactListAdaptor::RequestSubscriptionContextPtr &context)
 {
-    qDebug() << "BaseConnectionContactListInterface::Adaptee::requestSubscription";
+    debug() << "BaseConnectionContactListInterface::Adaptee::requestSubscription";
     DBusError error;
     mInterface->requestSubscription(contacts, message, &error);
     if (error.isValid()) {
@@ -1297,7 +1374,7 @@ void BaseConnectionContactListInterface::Adaptee::requestSubscription(const Tp::
 void BaseConnectionContactListInterface::Adaptee::authorizePublication(const Tp::UIntList &contacts,
         const Tp::Service::ConnectionInterfaceContactListAdaptor::AuthorizePublicationContextPtr &context)
 {
-    qDebug() << "BaseConnectionContactListInterface::Adaptee::authorizePublication";
+    debug() << "BaseConnectionContactListInterface::Adaptee::authorizePublication";
     DBusError error;
     mInterface->authorizePublication(contacts, &error);
     if (error.isValid()) {
@@ -1310,7 +1387,7 @@ void BaseConnectionContactListInterface::Adaptee::authorizePublication(const Tp:
 void BaseConnectionContactListInterface::Adaptee::removeContacts(const Tp::UIntList &contacts,
         const Tp::Service::ConnectionInterfaceContactListAdaptor::RemoveContactsContextPtr &context)
 {
-    qDebug() << "BaseConnectionContactListInterface::Adaptee::removeContacts";
+    debug() << "BaseConnectionContactListInterface::Adaptee::removeContacts";
     DBusError error;
     mInterface->removeContacts(contacts, &error);
     if (error.isValid()) {
@@ -1323,7 +1400,7 @@ void BaseConnectionContactListInterface::Adaptee::removeContacts(const Tp::UIntL
 void BaseConnectionContactListInterface::Adaptee::unsubscribe(const Tp::UIntList &contacts,
         const Tp::Service::ConnectionInterfaceContactListAdaptor::UnsubscribeContextPtr &context)
 {
-    qDebug() << "BaseConnectionContactListInterface::Adaptee::unsubscribe";
+    debug() << "BaseConnectionContactListInterface::Adaptee::unsubscribe";
     DBusError error;
     mInterface->unsubscribe(contacts, &error);
     if (error.isValid()) {
@@ -1336,7 +1413,7 @@ void BaseConnectionContactListInterface::Adaptee::unsubscribe(const Tp::UIntList
 void BaseConnectionContactListInterface::Adaptee::unpublish(const Tp::UIntList &contacts,
         const Tp::Service::ConnectionInterfaceContactListAdaptor::UnpublishContextPtr &context)
 {
-    qDebug() << "BaseConnectionContactListInterface::Adaptee::unpublish";
+    debug() << "BaseConnectionContactListInterface::Adaptee::unpublish";
     DBusError error;
     mInterface->unpublish(contacts, &error);
     if (error.isValid()) {
@@ -1349,7 +1426,7 @@ void BaseConnectionContactListInterface::Adaptee::unpublish(const Tp::UIntList &
 void BaseConnectionContactListInterface::Adaptee::download(
         const Tp::Service::ConnectionInterfaceContactListAdaptor::DownloadContextPtr &context)
 {
-    qDebug() << "BaseConnectionContactListInterface::Adaptee::download";
+    debug() << "BaseConnectionContactListInterface::Adaptee::download";
     DBusError error;
     mInterface->download(&error);
     if (error.isValid()) {
@@ -1361,7 +1438,7 @@ void BaseConnectionContactListInterface::Adaptee::download(
 
 /**
  * \class BaseConnectionContactListInterface
- * \ingroup servicecm
+ * \ingroup serviceconn
  * \headerfile TelepathyQt/base-connection.h <TelepathyQt/BaseConnection>
  *
  * \brief Base class for implementations of Connection.Interface.ContactList
@@ -1601,7 +1678,7 @@ Tp::FieldSpecs BaseConnectionContactInfoInterface::Adaptee::supportedFields() co
 void BaseConnectionContactInfoInterface::Adaptee::getContactInfo(const Tp::UIntList &contacts,
         const Tp::Service::ConnectionInterfaceContactInfoAdaptor::GetContactInfoContextPtr &context)
 {
-    qDebug() << "BaseConnectionContactInfoInterface::Adaptee::getContactInfo";
+    debug() << "BaseConnectionContactInfoInterface::Adaptee::getContactInfo";
     DBusError error;
     Tp::ContactInfoMap contactInfo = mInterface->getContactInfo(contacts, &error);
     if (error.isValid()) {
@@ -1614,7 +1691,7 @@ void BaseConnectionContactInfoInterface::Adaptee::getContactInfo(const Tp::UIntL
 void BaseConnectionContactInfoInterface::Adaptee::refreshContactInfo(const Tp::UIntList &contacts,
         const Tp::Service::ConnectionInterfaceContactInfoAdaptor::RefreshContactInfoContextPtr &context)
 {
-    qDebug() << "BaseConnectionContactInfoInterface::Adaptee::refreshContactInfo";
+    debug() << "BaseConnectionContactInfoInterface::Adaptee::refreshContactInfo";
     DBusError error;
     mInterface->refreshContactInfo(contacts, &error);
     if (error.isValid()) {
@@ -1627,7 +1704,7 @@ void BaseConnectionContactInfoInterface::Adaptee::refreshContactInfo(const Tp::U
 void BaseConnectionContactInfoInterface::Adaptee::requestContactInfo(uint contact,
         const Tp::Service::ConnectionInterfaceContactInfoAdaptor::RequestContactInfoContextPtr &context)
 {
-    qDebug() << "BaseConnectionContactInfoInterface::Adaptee::requestContactInfo";
+    debug() << "BaseConnectionContactInfoInterface::Adaptee::requestContactInfo";
     DBusError error;
     Tp::ContactInfoFieldList contactInfo = mInterface->requestContactInfo(contact, &error);
     if (error.isValid()) {
@@ -1640,7 +1717,7 @@ void BaseConnectionContactInfoInterface::Adaptee::requestContactInfo(uint contac
 void BaseConnectionContactInfoInterface::Adaptee::setContactInfo(const Tp::ContactInfoFieldList &contactInfo,
         const Tp::Service::ConnectionInterfaceContactInfoAdaptor::SetContactInfoContextPtr &context)
 {
-    qDebug() << "BaseConnectionContactInfoInterface::Adaptee::setContactInfo";
+    debug() << "BaseConnectionContactInfoInterface::Adaptee::setContactInfo";
     DBusError error;
     mInterface->setContactInfo(contactInfo, &error);
     if (error.isValid()) {
@@ -1652,7 +1729,7 @@ void BaseConnectionContactInfoInterface::Adaptee::setContactInfo(const Tp::Conta
 
 /**
  * \class BaseConnectionContactInfoInterface
- * \ingroup servicecm
+ * \ingroup serviceconn
  * \headerfile TelepathyQt/base-connection.h <TelepathyQt/BaseConnection>
  *
  * \brief Base class for implementations of Connection.Interface.Contact.Info
@@ -1798,7 +1875,7 @@ struct TP_QT_NO_EXPORT BaseConnectionAddressingInterface::Private {
 
 /**
  * \class BaseConnectionAddressingInterface
- * \ingroup servicecm
+ * \ingroup serviceconn
  * \headerfile TelepathyQt/base-connection.h <TelepathyQt/BaseConnection>
  *
  * \brief Base class for implementations of Connection.Interface.Addressing
@@ -1923,7 +2000,7 @@ BaseConnectionAliasingInterface::Adaptee::~Adaptee()
 void BaseConnectionAliasingInterface::Adaptee::getAliasFlags(
         const Tp::Service::ConnectionInterfaceAliasingAdaptor::GetAliasFlagsContextPtr &context)
 {
-    qDebug() << "BaseConnectionAliasingInterface::Adaptee::getAliasFlags";
+    debug() << "BaseConnectionAliasingInterface::Adaptee::getAliasFlags";
     DBusError error;
     Tp::ConnectionAliasFlags aliasFlags = mInterface->getAliasFlags(&error);
     if (error.isValid()) {
@@ -1936,7 +2013,7 @@ void BaseConnectionAliasingInterface::Adaptee::getAliasFlags(
 void BaseConnectionAliasingInterface::Adaptee::requestAliases(const Tp::UIntList &contacts,
         const Tp::Service::ConnectionInterfaceAliasingAdaptor::RequestAliasesContextPtr &context)
 {
-    qDebug() << "BaseConnectionAliasingInterface::Adaptee::requestAliases";
+    debug() << "BaseConnectionAliasingInterface::Adaptee::requestAliases";
     DBusError error;
     QStringList aliases = mInterface->requestAliases(contacts, &error);
     if (error.isValid()) {
@@ -1949,7 +2026,7 @@ void BaseConnectionAliasingInterface::Adaptee::requestAliases(const Tp::UIntList
 void BaseConnectionAliasingInterface::Adaptee::getAliases(const Tp::UIntList &contacts,
         const Tp::Service::ConnectionInterfaceAliasingAdaptor::GetAliasesContextPtr &context)
 {
-    qDebug() << "BaseConnectionAliasingInterface::Adaptee::getAliases";
+    debug() << "BaseConnectionAliasingInterface::Adaptee::getAliases";
     DBusError error;
     Tp::AliasMap aliases = mInterface->getAliases(contacts, &error);
     if (error.isValid()) {
@@ -1962,7 +2039,7 @@ void BaseConnectionAliasingInterface::Adaptee::getAliases(const Tp::UIntList &co
 void BaseConnectionAliasingInterface::Adaptee::setAliases(const Tp::AliasMap &aliases,
         const Tp::Service::ConnectionInterfaceAliasingAdaptor::SetAliasesContextPtr &context)
 {
-    qDebug() << "BaseConnectionAliasingInterface::Adaptee::setAliases";
+    debug() << "BaseConnectionAliasingInterface::Adaptee::setAliases";
     DBusError error;
     mInterface->setAliases(aliases, &error);
     if (error.isValid()) {
@@ -1974,7 +2051,7 @@ void BaseConnectionAliasingInterface::Adaptee::setAliases(const Tp::AliasMap &al
 
 /**
  * \class BaseConnectionAliasingInterface
- * \ingroup servicecm
+ * \ingroup serviceconn
  * \headerfile TelepathyQt/base-connection.h <TelepathyQt/BaseConnection>
  *
  * \brief Base class for implementations of Connection.Interface.Aliasing
@@ -2148,7 +2225,7 @@ uint BaseConnectionAvatarsInterface::Adaptee::maximumAvatarBytes() const
 void BaseConnectionAvatarsInterface::Adaptee::getKnownAvatarTokens(const Tp::UIntList &contacts,
         const Tp::Service::ConnectionInterfaceAvatarsAdaptor::GetKnownAvatarTokensContextPtr &context)
 {
-    qDebug() << "BaseConnectionAvatarsInterface::Adaptee::getKnownAvatarTokens";
+    debug() << "BaseConnectionAvatarsInterface::Adaptee::getKnownAvatarTokens";
     DBusError error;
     Tp::AvatarTokenMap tokens = mInterface->getKnownAvatarTokens(contacts, &error);
     if (error.isValid()) {
@@ -2161,7 +2238,7 @@ void BaseConnectionAvatarsInterface::Adaptee::getKnownAvatarTokens(const Tp::UIn
 void BaseConnectionAvatarsInterface::Adaptee::requestAvatars(const Tp::UIntList &contacts,
         const Tp::Service::ConnectionInterfaceAvatarsAdaptor::RequestAvatarsContextPtr &context)
 {
-    qDebug() << "BaseConnectionAvatarsInterface::Adaptee::requestAvatars";
+    debug() << "BaseConnectionAvatarsInterface::Adaptee::requestAvatars";
     DBusError error;
     mInterface->requestAvatars(contacts, &error);
     if (error.isValid()) {
@@ -2174,7 +2251,7 @@ void BaseConnectionAvatarsInterface::Adaptee::requestAvatars(const Tp::UIntList 
 void BaseConnectionAvatarsInterface::Adaptee::setAvatar(const QByteArray &avatar, const QString &mimeType,
         const Tp::Service::ConnectionInterfaceAvatarsAdaptor::SetAvatarContextPtr &context)
 {
-    qDebug() << "BaseConnectionAvatarsInterface::Adaptee::setAvatar";
+    debug() << "BaseConnectionAvatarsInterface::Adaptee::setAvatar";
     DBusError error;
     QString token = mInterface->setAvatar(avatar, mimeType, &error);
     if (error.isValid()) {
@@ -2187,7 +2264,7 @@ void BaseConnectionAvatarsInterface::Adaptee::setAvatar(const QByteArray &avatar
 void BaseConnectionAvatarsInterface::Adaptee::clearAvatar(
         const Tp::Service::ConnectionInterfaceAvatarsAdaptor::ClearAvatarContextPtr &context)
 {
-    qDebug() << "BaseConnectionAvatarsInterface::Adaptee::clearAvatar";
+    debug() << "BaseConnectionAvatarsInterface::Adaptee::clearAvatar";
     DBusError error;
     mInterface->clearAvatar(&error);
     if (error.isValid()) {
@@ -2199,7 +2276,7 @@ void BaseConnectionAvatarsInterface::Adaptee::clearAvatar(
 
 /**
  * \class BaseConnectionAvatarsInterface
- * \ingroup servicecm
+ * \ingroup serviceconn
  * \headerfile TelepathyQt/base-connection.h <TelepathyQt/BaseConnection>
  *
  * \brief Base class for implementations of Connection.Interface.Avatars
@@ -2316,6 +2393,260 @@ void BaseConnectionAvatarsInterface::avatarUpdated(uint contact, const QString &
 void BaseConnectionAvatarsInterface::avatarRetrieved(uint contact, const QString &token, const QByteArray &avatar, const QString &type)
 {
     QMetaObject::invokeMethod(mPriv->adaptee, "avatarRetrieved", Q_ARG(uint, contact), Q_ARG(QString, token), Q_ARG(QByteArray, avatar), Q_ARG(QString, type)); //Can simply use emit in Qt5
+}
+
+// Conn.I.ClientTypes
+// The BaseConnectionClientTypesInterface code is fully or partially generated by the TelepathyQt-Generator.
+struct TP_QT_NO_EXPORT BaseConnectionClientTypesInterface::Private {
+    Private(BaseConnectionClientTypesInterface *parent)
+        : adaptee(new BaseConnectionClientTypesInterface::Adaptee(parent))
+    {
+    }
+
+    GetClientTypesCallback getClientTypesCB;
+    RequestClientTypesCallback requestClientTypesCB;
+    BaseConnectionClientTypesInterface::Adaptee *adaptee;
+};
+
+BaseConnectionClientTypesInterface::Adaptee::Adaptee(BaseConnectionClientTypesInterface *interface)
+    : QObject(interface),
+      mInterface(interface)
+{
+}
+
+BaseConnectionClientTypesInterface::Adaptee::~Adaptee()
+{
+}
+
+void BaseConnectionClientTypesInterface::Adaptee::getClientTypes(const Tp::UIntList &contacts,
+        const Tp::Service::ConnectionInterfaceClientTypesAdaptor::GetClientTypesContextPtr &context)
+{
+    debug() << "BaseConnectionClientTypesInterface::Adaptee::getClientTypes";
+    DBusError error;
+    Tp::ContactClientTypes clientTypes = mInterface->getClientTypes(contacts, &error);
+    if (error.isValid()) {
+        context->setFinishedWithError(error.name(), error.message());
+        return;
+    }
+    context->setFinished(clientTypes);
+}
+
+void BaseConnectionClientTypesInterface::Adaptee::requestClientTypes(uint contact,
+        const Tp::Service::ConnectionInterfaceClientTypesAdaptor::RequestClientTypesContextPtr &context)
+{
+    debug() << "BaseConnectionClientTypesInterface::Adaptee::requestClientTypes";
+    DBusError error;
+    QStringList clientTypes = mInterface->requestClientTypes(contact, &error);
+    if (error.isValid()) {
+        context->setFinishedWithError(error.name(), error.message());
+        return;
+    }
+    context->setFinished(clientTypes);
+}
+
+/**
+ * \class BaseConnectionClientTypesInterface
+ * \ingroup serviceconn
+ * \headerfile TelepathyQt/base-connection.h <TelepathyQt/BaseConnection>
+ *
+ * \brief Base class for implementations of Connection.Interface.ClientTypes
+ */
+
+/**
+ * Class constructor.
+ */
+BaseConnectionClientTypesInterface::BaseConnectionClientTypesInterface()
+    : AbstractConnectionInterface(TP_QT_IFACE_CONNECTION_INTERFACE_CLIENT_TYPES),
+      mPriv(new Private(this))
+{
+}
+
+/**
+ * Class destructor.
+ */
+BaseConnectionClientTypesInterface::~BaseConnectionClientTypesInterface()
+{
+    delete mPriv;
+}
+
+/**
+ * Return the immutable properties of this interface.
+ *
+ * Immutable properties cannot change after the interface has been registered
+ * on a service on the bus with registerInterface().
+ *
+ * \return The immutable properties of this interface.
+ */
+QVariantMap BaseConnectionClientTypesInterface::immutableProperties() const
+{
+    QVariantMap map;
+    return map;
+}
+
+void BaseConnectionClientTypesInterface::createAdaptor()
+{
+    (void) new Tp::Service::ConnectionInterfaceClientTypesAdaptor(dbusObject()->dbusConnection(),
+            mPriv->adaptee, dbusObject());
+}
+
+void BaseConnectionClientTypesInterface::setGetClientTypesCallback(const GetClientTypesCallback &cb)
+{
+    mPriv->getClientTypesCB = cb;
+}
+
+Tp::ContactClientTypes BaseConnectionClientTypesInterface::getClientTypes(const Tp::UIntList &contacts, DBusError *error)
+{
+    if (!mPriv->getClientTypesCB.isValid()) {
+        error->set(TP_QT_ERROR_NOT_IMPLEMENTED, QLatin1String("Not implemented"));
+        return Tp::ContactClientTypes();
+    }
+    return mPriv->getClientTypesCB(contacts, error);
+}
+
+void BaseConnectionClientTypesInterface::setRequestClientTypesCallback(const RequestClientTypesCallback &cb)
+{
+    mPriv->requestClientTypesCB = cb;
+}
+
+QStringList BaseConnectionClientTypesInterface::requestClientTypes(uint contact, DBusError *error)
+{
+    if (!mPriv->requestClientTypesCB.isValid()) {
+        error->set(TP_QT_ERROR_NOT_IMPLEMENTED, QLatin1String("Not implemented"));
+        return QStringList();
+    }
+    return mPriv->requestClientTypesCB(contact, error);
+}
+
+void BaseConnectionClientTypesInterface::clientTypesUpdated(uint contact, const QStringList &clientTypes)
+{
+    QMetaObject::invokeMethod(mPriv->adaptee, "clientTypesUpdated", Q_ARG(uint, contact), Q_ARG(QStringList, clientTypes)); //Can simply use emit in Qt5
+}
+
+// Conn.I.ContactCapabilities
+// The BaseConnectionContactCapabilitiesInterface code is fully or partially generated by the TelepathyQt-Generator.
+struct TP_QT_NO_EXPORT BaseConnectionContactCapabilitiesInterface::Private {
+    Private(BaseConnectionContactCapabilitiesInterface *parent)
+        : adaptee(new BaseConnectionContactCapabilitiesInterface::Adaptee(parent))
+    {
+    }
+
+    UpdateCapabilitiesCallback updateCapabilitiesCB;
+    GetContactCapabilitiesCallback getContactCapabilitiesCB;
+    BaseConnectionContactCapabilitiesInterface::Adaptee *adaptee;
+};
+
+BaseConnectionContactCapabilitiesInterface::Adaptee::Adaptee(BaseConnectionContactCapabilitiesInterface *interface)
+    : QObject(interface),
+      mInterface(interface)
+{
+}
+
+BaseConnectionContactCapabilitiesInterface::Adaptee::~Adaptee()
+{
+}
+
+void BaseConnectionContactCapabilitiesInterface::Adaptee::updateCapabilities(const Tp::HandlerCapabilitiesList &handlerCapabilities,
+        const Tp::Service::ConnectionInterfaceContactCapabilitiesAdaptor::UpdateCapabilitiesContextPtr &context)
+{
+    debug() << "BaseConnectionContactCapabilitiesInterface::Adaptee::updateCapabilities";
+    DBusError error;
+    mInterface->updateCapabilities(handlerCapabilities, &error);
+    if (error.isValid()) {
+        context->setFinishedWithError(error.name(), error.message());
+        return;
+    }
+    context->setFinished();
+}
+
+void BaseConnectionContactCapabilitiesInterface::Adaptee::getContactCapabilities(const Tp::UIntList &handles,
+        const Tp::Service::ConnectionInterfaceContactCapabilitiesAdaptor::GetContactCapabilitiesContextPtr &context)
+{
+    debug() << "BaseConnectionContactCapabilitiesInterface::Adaptee::getContactCapabilities";
+    DBusError error;
+    Tp::ContactCapabilitiesMap contactCapabilities = mInterface->getContactCapabilities(handles, &error);
+    if (error.isValid()) {
+        context->setFinishedWithError(error.name(), error.message());
+        return;
+    }
+    context->setFinished(contactCapabilities);
+}
+
+/**
+ * \class BaseConnectionContactCapabilitiesInterface
+ * \ingroup serviceconn
+ * \headerfile TelepathyQt/base-connection.h <TelepathyQt/BaseConnection>
+ *
+ * \brief Base class for implementations of Connection.Interface.ContactCapabilities
+ */
+
+/**
+ * Class constructor.
+ */
+BaseConnectionContactCapabilitiesInterface::BaseConnectionContactCapabilitiesInterface()
+    : AbstractConnectionInterface(TP_QT_IFACE_CONNECTION_INTERFACE_CONTACT_CAPABILITIES),
+      mPriv(new Private(this))
+{
+}
+
+/**
+ * Class destructor.
+ */
+BaseConnectionContactCapabilitiesInterface::~BaseConnectionContactCapabilitiesInterface()
+{
+    delete mPriv;
+}
+
+/**
+ * Return the immutable properties of this interface.
+ *
+ * Immutable properties cannot change after the interface has been registered
+ * on a service on the bus with registerInterface().
+ *
+ * \return The immutable properties of this interface.
+ */
+QVariantMap BaseConnectionContactCapabilitiesInterface::immutableProperties() const
+{
+    QVariantMap map;
+    return map;
+}
+
+void BaseConnectionContactCapabilitiesInterface::createAdaptor()
+{
+    (void) new Tp::Service::ConnectionInterfaceContactCapabilitiesAdaptor(dbusObject()->dbusConnection(),
+            mPriv->adaptee, dbusObject());
+}
+
+void BaseConnectionContactCapabilitiesInterface::setUpdateCapabilitiesCallback(const UpdateCapabilitiesCallback &cb)
+{
+    mPriv->updateCapabilitiesCB = cb;
+}
+
+void BaseConnectionContactCapabilitiesInterface::updateCapabilities(const Tp::HandlerCapabilitiesList &handlerCapabilities, DBusError *error)
+{
+    if (!mPriv->updateCapabilitiesCB.isValid()) {
+        error->set(TP_QT_ERROR_NOT_IMPLEMENTED, QLatin1String("Not implemented"));
+        return;
+    }
+    return mPriv->updateCapabilitiesCB(handlerCapabilities, error);
+}
+
+void BaseConnectionContactCapabilitiesInterface::setGetContactCapabilitiesCallback(const GetContactCapabilitiesCallback &cb)
+{
+    mPriv->getContactCapabilitiesCB = cb;
+}
+
+Tp::ContactCapabilitiesMap BaseConnectionContactCapabilitiesInterface::getContactCapabilities(const Tp::UIntList &handles, DBusError *error)
+{
+    if (!mPriv->getContactCapabilitiesCB.isValid()) {
+        error->set(TP_QT_ERROR_NOT_IMPLEMENTED, QLatin1String("Not implemented"));
+        return Tp::ContactCapabilitiesMap();
+    }
+    return mPriv->getContactCapabilitiesCB(handles, error);
+}
+
+void BaseConnectionContactCapabilitiesInterface::contactCapabilitiesChanged(const Tp::ContactCapabilitiesMap &caps)
+{
+    QMetaObject::invokeMethod(mPriv->adaptee, "contactCapabilitiesChanged", Q_ARG(Tp::ContactCapabilitiesMap, caps)); //Can simply use emit in Qt5
 }
 
 }

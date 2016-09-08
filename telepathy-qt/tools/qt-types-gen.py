@@ -302,6 +302,40 @@ TP_QT_NO_EXPORT void _registerTypes()
             self.decl(self.faketype(val, real))
             self.to_declare.append(self.namespace + '::' + val)
 
+            self.both('%s QDBusArgument& operator<<(QDBusArgument& arg, const %s &list)' %
+                    (self.visibility, val))
+            self.decl(';\n')
+            self.impl("""
+{
+    int id = qMetaTypeId<%s>();
+    arg.beginArray(id);
+    for (int i = 0; i < list.count(); ++i) {
+        arg << list.at(i);
+    }
+    arg.endArray();
+    return arg;
+}
+
+""" % (array_of))
+
+            self.both('%s const QDBusArgument& operator>>(const QDBusArgument& arg, %s &list)' %
+                    (self.visibility, val))
+            self.decl(';\n\n')
+            self.impl("""
+{
+    arg.beginArray();
+    list.clear();
+    while (!arg.atEnd()) {
+        %s item;
+        arg >> item;
+        list.append(item);
+    }
+    arg.endArray();
+    return arg;
+}
+
+""" % (array_of))
+
         structs = self.spec.getElementsByTagNameNS(NS_TP, 'struct')
         mappings = self.spec.getElementsByTagNameNS(NS_TP, 'mapping')
         exts = self.spec.getElementsByTagNameNS(NS_TP, 'external-type')
@@ -525,10 +559,10 @@ typedef QList<%s> %sList;
         return """\
 struct %(visibility)s %(fake)s : public %(real)s
 {
-    inline %(fake)s() : %(real)s() {}
-    inline %(fake)s(const %(real)s& a) : %(real)s(a) {}
+    %(fake)s() : %(real)s() {}
+    %(fake)s(const %(real)s& a) : %(real)s(a) {}
 
-    inline %(fake)s& operator=(const %(real)s& a)
+    %(fake)s& operator=(const %(real)s& a)
     {
         *(static_cast<%(real)s*>(this)) = a;
         return *this;
