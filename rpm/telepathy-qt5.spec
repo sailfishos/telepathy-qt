@@ -10,6 +10,12 @@ Source1:    INSIGNIFICANT
 Source2:    mktests.sh.in
 Source3:    runDbusTest.sh.in
 Source4:    runTest.sh.in
+
+Patch0:     0001-telepathy-qt-Install-tests.patch
+Patch1:     0002-Don-t-depend-on-Qt5Widgets-for-build.patch
+Patch2:     0003-port-test-scripts-to-new-gi-based-pygobject.patch
+Patch3:     0004-Remove-assert-which-appears-invalid-for-conference-c.patch
+
 Requires(post): /sbin/ldconfig
 Requires(postun): /sbin/ldconfig
 BuildRequires:  pkgconfig(Qt5Core)
@@ -83,6 +89,10 @@ This package contains automated tests and tests.xml
 
 %prep
 %setup -q -n %{name}-%{version}/telepathy-qt
+%patch0 -p1
+%patch1 -p1
+%patch2 -p1
+%patch3 -p1
 
 %build
 %__cp $RPM_SOURCE_DIR/INSIGNIFICANT tests/
