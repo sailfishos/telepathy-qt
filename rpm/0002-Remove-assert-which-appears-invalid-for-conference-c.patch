@@ -1,7 +1,7 @@
-From fa932c7bc2d6f68c7a6d019012f5a459b445490e Mon Sep 17 00:00:00 2001
+From 7af81a3bafd595072a685301e76a3651d429b9f9 Mon Sep 17 00:00:00 2001
 From: Martin Jones <martin.jones@jollamobile.com>
 Date: Fri, 22 Apr 2016 11:40:39 +0000
-Subject: [PATCH 4/4] Remove assert which appears invalid for conference call.
+Subject: [PATCH 2/2] Remove assert which appears invalid for conference call.
  Contributes to JB#4743
 
 ---

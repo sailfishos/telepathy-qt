@@ -1,7 +1,7 @@
-From e7b58782dc5304a5fe8e07dac397c07f802adcde Mon Sep 17 00:00:00 2001
+From c62211b97821cae101ba54a70f1f28d527f95699 Mon Sep 17 00:00:00 2001
 From: Robin Burchell <robin+git@viroteck.net>
 Date: Wed, 28 Aug 2013 22:33:34 +0000
-Subject: [PATCH 1/4] [telepathy-qt] Install tests.
+Subject: [PATCH 1/2] [telepathy-qt] Install tests.
 
 ---
  cmake/modules/TpQtMacros.cmake                |  1 +
@@ -13,11 +13,11 @@ Subject: [PATCH 1/4] [telepathy-qt] Install tests.
  tests/dbus/CMakeLists.txt                     |  6 +++++
  tests/lib/CMakeLists.txt                      |  4 ++++
  tests/lib/glib-helpers/CMakeLists.txt         |  3 +++
- tests/lib/glib/CMakeLists.txt                 |  4 ++++
- 10 files changed, 50 insertions(+), 2 deletions(-)
+ tests/lib/glib/CMakeLists.txt                 |  3 +++
+ 10 files changed, 49 insertions(+), 2 deletions(-)
 
 diff --git a/cmake/modules/TpQtMacros.cmake b/cmake/modules/TpQtMacros.cmake
-index 39b166ba..29b15a6d 100644
+index e5583240..fc08f7fa 100644
 --- a/cmake/modules/TpQtMacros.cmake
 +++ b/cmake/modules/TpQtMacros.cmake
 @@ -425,6 +425,7 @@ macro(tpqt_add_dbus_unit_test _fancyName _name)
@@ -108,10 +108,10 @@ index 6babc161..6587e558 100644
    <policy context="default">
      <!-- Allow everything to be sent -->
 diff --git a/tests/dbus/CMakeLists.txt b/tests/dbus/CMakeLists.txt
-index 7ab48f2d..dfc1629b 100644
+index 2365e969..534e7037 100644
 --- a/tests/dbus/CMakeLists.txt
 +++ b/tests/dbus/CMakeLists.txt
-@@ -101,3 +101,9 @@ endif(ENABLE_SERVICE_SUPPORT)
+@@ -83,3 +83,9 @@ endif()
  add_custom_target(check ctest --output-on-failure -O test.log
                    WORKING_DIRECTORY ${CMAKE_BINARY_DIR}/tests)
  add_dependencies(check check-local ${_telepathy_qt_test_cases})
@@ -122,40 +122,39 @@ index 7ab48f2d..dfc1629b 100644
 +INSTALL(FILES ${CMAKE_CURRENT_BINARY_DIR}/dbus-tests.list DESTINATION ${NEMO_TESTS_DIR})
 +INSTALL(FILES ${CMAKE_SOURCE_DIR}/tools/with-session-bus.sh DESTINATION ${NEMO_TESTS_DIR_BIN} PERMISSIONS OWNER_READ OWNER_WRITE OWNER_EXECUTE GROUP_READ GROUP_EXECUTE WORLD_READ WORLD_EXECUTE)
 diff --git a/tests/lib/CMakeLists.txt b/tests/lib/CMakeLists.txt
-index 82e1d3dd..af6ead72 100644
+index 5749d42e..12e8941b 100644
 --- a/tests/lib/CMakeLists.txt
 +++ b/tests/lib/CMakeLists.txt
-@@ -28,3 +28,7 @@ if(ENABLE_TP_GLIB_TESTS)
+@@ -33,3 +33,7 @@ if(ENABLE_TP_GLIB_TESTS)
      add_subdirectory(glib)
      add_subdirectory(glib-helpers)
- endif(ENABLE_TP_GLIB_TESTS)
+ endif()
 +
 +# Add Nemo install target
 +INSTALL(TARGETS tp-qt-tests LIBRARY DESTINATION ${NEMO_TESTS_DIR_LIB})
 +INSTALL(FILES ${CMAKE_CURRENT_SOURCE_DIR}/python/account-manager.py DESTINATION ${NEMO_TESTS_DIR_BIN} PERMISSIONS OWNER_READ OWNER_WRITE OWNER_EXECUTE GROUP_READ GROUP_EXECUTE WORLD_READ WORLD_EXECUTE)
 diff --git a/tests/lib/glib-helpers/CMakeLists.txt b/tests/lib/glib-helpers/CMakeLists.txt
-index c269c40c..bead4f7c 100644
+index b200f4a3..d02253d0 100644
 --- a/tests/lib/glib-helpers/CMakeLists.txt
 +++ b/tests/lib/glib-helpers/CMakeLists.txt
 @@ -21,3 +21,6 @@ if(ENABLE_TP_GLIB_TESTS)
-         ${QT_QTTEST_LIBRARY}
+         Qt5::Test
          telepathy-qt${QT_VERSION_MAJOR})
- endif(ENABLE_TP_GLIB_TESTS)
+ endif()
 +
 +# Add Nemo install target
 +INSTALL(TARGETS tp-qt-tests-glib-helpers LIBRARY DESTINATION ${NEMO_TESTS_DIR_LIB})
 diff --git a/tests/lib/glib/CMakeLists.txt b/tests/lib/glib/CMakeLists.txt
-index acb11924..3e3beeb0 100644
+index 73ff4000..2077e301 100644
 --- a/tests/lib/glib/CMakeLists.txt
 +++ b/tests/lib/glib/CMakeLists.txt
-@@ -71,3 +71,7 @@ if(ENABLE_TP_GLIB_TESTS)
+@@ -77,3 +77,6 @@ if(ENABLE_TP_GLIB_TESTS)
          tp-glib-tests-future-extensions)
  
- endif(ENABLE_TP_GLIB_TESTS)
+ endif()
 +
 +# Add Nemo install target
 +INSTALL(TARGETS tp-glib-tests LIBRARY DESTINATION ${NEMO_TESTS_DIR_LIB})
-+
 -- 
 2.20.1
 
