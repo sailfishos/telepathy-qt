@@ -1,6 +1,6 @@
 Name:       telepathy-qt5
 Summary:    Qt 5 Telepathy library
-Version:    0.9.7
+Version:    0.9.8
 Release:    1
 Group:      System/Libraries
 License:    GPLv2
@@ -10,21 +10,24 @@ Source1:    INSIGNIFICANT
 Source2:    mktests.sh.in
 Source3:    runDbusTest.sh.in
 Source4:    runTest.sh.in
+
+Patch0:     0001-telepathy-qt-Install-tests.patch
+Patch1:     0002-Remove-assert-which-appears-invalid-for-conference-c.patch
+
 Requires(post): /sbin/ldconfig
 Requires(postun): /sbin/ldconfig
 BuildRequires:  pkgconfig(Qt5Core)
 BuildRequires:  pkgconfig(Qt5DBus)
-BuildRequires:  pkgconfig(Qt5Gui)
 BuildRequires:  pkgconfig(Qt5Network)
 BuildRequires:  pkgconfig(Qt5Test)
 BuildRequires:  pkgconfig(Qt5Xml)
 BuildRequires:  pkgconfig(farstream-0.2)
-BuildRequires:  pkgconfig(telepathy-glib) >= 0.17.5
+BuildRequires:  pkgconfig(telepathy-glib) >= 0.18.0
 BuildRequires:  pkgconfig(telepathy-farstream) >= 0.4.0
 BuildRequires:  pkgconfig(gstreamer-1.0)
 BuildRequires:  pkgconfig(libxml-2.0)
-BuildRequires:  python
-BuildRequires:  dbus-python
+BuildRequires:  python3-base
+BuildRequires:  dbus-python3
 BuildRequires:  doxygen
 BuildRequires:  cmake
 
@@ -83,6 +86,8 @@ This package contains automated tests and tests.xml
 
 %prep
 %setup -q -n %{name}-%{version}/telepathy-qt
+%patch0 -p1
+%patch1 -p1
 
 %build
 %__cp $RPM_SOURCE_DIR/INSIGNIFICANT tests/
@@ -94,8 +99,8 @@ This package contains automated tests and tests.xml
 %__chmod 0755 tests/runDbusTest.sh.in
 %__chmod 0755 tests/runTest.sh.in
 
-export QT_SELECT=5
-%cmake -DENABLE_TESTS=TRUE -DENABLE_FARSIGHT=FALSE -DENABLE_FARSTREAM=TRUE -DENABLE_EXAMPLES=FALSE
+
+%cmake -DENABLE_TESTS=TRUE -DENABLE_FARSTREAM=TRUE -DENABLE_EXAMPLES=FALSE
 
 
 make %{?_smp_mflags}
