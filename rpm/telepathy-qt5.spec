@@ -2,7 +2,6 @@ Name:       telepathy-qt5
 Summary:    Qt 5 Telepathy library
 Version:    0.9.8
 Release:    1
-Group:      System/Libraries
 License:    GPLv2
 URL:        http://telepathy.freedesktop.org/wiki/
 Source0:    http://telepathy.freedesktop.org/releases/telepathy-qt/%{name}-%{version}.tar.gz
@@ -26,7 +25,7 @@ BuildRequires:  pkgconfig(telepathy-glib) >= 0.18.0
 BuildRequires:  pkgconfig(telepathy-farstream) >= 0.4.0
 BuildRequires:  pkgconfig(gstreamer-1.0)
 BuildRequires:  pkgconfig(libxml-2.0)
-BuildRequires:  python3-base
+BuildRequires:  python3-devel
 BuildRequires:  dbus-python3
 BuildRequires:  doxygen
 BuildRequires:  cmake
