@@ -2,7 +2,6 @@ Name:       telepathy-qt5
 Summary:    Qt 5 Telepathy library
 Version:    0.9.8
 Release:    1
-Group:      System/Libraries
 License:    GPLv2
 URL:        http://telepathy.freedesktop.org/wiki/
 Source0:    http://telepathy.freedesktop.org/releases/telepathy-qt/%{name}-%{version}.tar.gz
@@ -11,8 +10,9 @@ Source2:    mktests.sh.in
 Source3:    runDbusTest.sh.in
 Source4:    runTest.sh.in
 
-Patch0:     0001-telepathy-qt-Install-tests.patch
+Patch0:     0001-Install-tests.patch
 Patch1:     0002-Remove-assert-which-appears-invalid-for-conference-c.patch
+Patch2:     0003-Use-python3-on-tests-accountmanager.patch
 
 Requires(post): /sbin/ldconfig
 Requires(postun): /sbin/ldconfig
@@ -37,7 +37,6 @@ Qt-based library for Telepathy components.
 
 %package devel
 Summary:    Development files for %{name}
-Group:      Development/Libraries
 Requires:   %{name} = %{version}-%{release}
 
 %description devel
@@ -47,7 +46,6 @@ that use %{name}.
 
 %package farstream
 Summary:    Qt 5 Telepathy/Farstream integration
-Group:      Development/Libraries
 Requires:   %{name} = %{version}-%{release}
 Requires:   telepathy-qt5 = %{version}
 Requires(post): /sbin/ldconfig
@@ -61,7 +59,6 @@ which implements media stream using gstreamer and Farstream.
 
 %package farstream-devel
 Summary:    Development files for telepathy-qt5-farstream
-Group:      Development/Libraries
 Requires:   %{name}-farstream = %{version}-%{release}
 Requires:   telepathy-qt5-devel = %{version}
 Requires:   telepathy-farstream-devel
@@ -74,20 +71,15 @@ that use telepathy-qt5-farstream.
 
 %package tests
 Summary:    Automated tests for %{name}
-Group:      Development/Libraries
 Requires:   %{name} = %{version}-%{release}
 Requires:   %{name} = %{version}
-Requires:   dbus-python
-Requires:   pygobject2
 
 %description tests
 This package contains automated tests and tests.xml
 
 
 %prep
-%setup -q -n %{name}-%{version}/telepathy-qt
-%patch0 -p1
-%patch1 -p1
+%autosetup -p1 -n %{name}-%{version}/telepathy-qt
 
 %build
 %__cp $RPM_SOURCE_DIR/INSIGNIFICANT tests/

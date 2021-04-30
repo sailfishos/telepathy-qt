@@ -1,7 +1,7 @@
-From 7af81a3bafd595072a685301e76a3651d429b9f9 Mon Sep 17 00:00:00 2001
+From ccf1643b5a24e984fac696277240ac903098a370 Mon Sep 17 00:00:00 2001
 From: Martin Jones <martin.jones@jollamobile.com>
 Date: Fri, 22 Apr 2016 11:40:39 +0000
-Subject: [PATCH 2/2] Remove assert which appears invalid for conference call.
+Subject: [PATCH 2/3] Remove assert which appears invalid for conference call.
  Contributes to JB#4743
 
 ---
@@ -24,5 +24,5 @@ index 2b7cde55..3a4d349a 100644
              warning().nospace() << "Getting conference channel removed actor "
                  "failed with " << pc->errorName() << ":" <<
 -- 
-2.20.1
+2.30.2
 
