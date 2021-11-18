@@ -2,7 +2,7 @@ Name:       telepathy-qt5
 Summary:    Qt 5 Telepathy library
 Version:    0.9.8
 Release:    1
-License:    GPLv2
+License:    LGPLv2+
 URL:        http://telepathy.freedesktop.org/wiki/
 Source0:    http://telepathy.freedesktop.org/releases/telepathy-qt/%{name}-%{version}.tar.gz
 Source1:    INSIGNIFICANT
@@ -47,10 +47,8 @@ that use %{name}.
 %package farstream
 Summary:    Qt 5 Telepathy/Farstream integration
 Requires:   %{name} = %{version}-%{release}
-Requires:   telepathy-qt5 = %{version}
 Requires(post): /sbin/ldconfig
 Requires(postun): /sbin/ldconfig
-Obsoletes:  %{name}-farsight
 
 %description farstream
 This package provides telepathy-qt5 integration with telepathy-farstream,
@@ -62,7 +60,6 @@ Summary:    Development files for telepathy-qt5-farstream
 Requires:   %{name}-farstream = %{version}-%{release}
 Requires:   telepathy-qt5-devel = %{version}
 Requires:   telepathy-farstream-devel
-Obsoletes:  %{name}-farsight-devel
 
 %description farstream-devel
 This package contains libraries and header files for developing applications
@@ -114,6 +111,7 @@ export QT_SELECT=5
 
 %files
 %defattr(-,root,root,-)
+%license COPYING
 %{_libdir}/libtelepathy-qt5.so.*
 %{_libdir}/libtelepathy-qt5-service.so.*
 
