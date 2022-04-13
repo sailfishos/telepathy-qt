@@ -13,6 +13,7 @@ Source4:    runTest.sh.in
 Patch0:     0001-Install-tests.patch
 Patch1:     0002-Remove-assert-which-appears-invalid-for-conference-c.patch
 Patch2:     0003-Use-python3-on-tests-accountmanager.patch
+Patch3:     0004-Fix-build-with-glib-2.72.0-and-newer.patch
 
 Requires(post): /sbin/ldconfig
 Requires(postun): /sbin/ldconfig

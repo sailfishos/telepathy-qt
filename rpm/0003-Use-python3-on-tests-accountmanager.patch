@@ -1,14 +1,14 @@
-From 353e0e595aedaa7c93d826754579e744c336ed42 Mon Sep 17 00:00:00 2001
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
 From: Pekka Vuorela <pekka.vuorela@jolla.com>
 Date: Fri, 30 Apr 2021 12:46:38 +0300
-Subject: [PATCH 3/3] Use python3 on tests' accountmanager
+Subject: [PATCH] Use python3 on tests' accountmanager
 
 ---
  tests/lib/python/account-manager.py | 2 +-
  1 file changed, 1 insertion(+), 1 deletion(-)
 
 diff --git a/tests/lib/python/account-manager.py b/tests/lib/python/account-manager.py
-index cad1fc42..1956a6aa 100755
+index cad1fc4268e9ed0196d7771a8516837daeebcac0..1956a6aa56e174bfd784c0c1dee842d751259d29 100755
 --- a/tests/lib/python/account-manager.py
 +++ b/tests/lib/python/account-manager.py
 @@ -1,4 +1,4 @@
@@ -17,6 +17,3 @@ index cad1fc42..1956a6aa 100755
  #
  # A small implementation of a Telepathy AccountManager.
  
--- 
-2.30.2
-

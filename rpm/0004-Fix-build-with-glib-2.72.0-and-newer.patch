@@ -1,0 +1,54 @@
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: =?UTF-8?q?Matti=20Lehtim=C3=A4ki?= <matti.lehtimaki@jolla.com>
+Date: Wed, 13 Apr 2022 15:55:42 +0300
+Subject: [PATCH] Fix build with glib 2.72.0 and newer
+
+---
+ CMakeLists.txt                | 6 ++++--
+ tests/lib/glib/CMakeLists.txt | 6 +++++-
+ 2 files changed, 9 insertions(+), 3 deletions(-)
+
+diff --git a/CMakeLists.txt b/CMakeLists.txt
+index 49ea8d394a5e732a3b04ae6c4d6aef478657839f..d7a003f78e2ff1bb1fdd33ed5200ef7f8734b025 100644
+--- a/CMakeLists.txt
++++ b/CMakeLists.txt
+@@ -185,7 +185,9 @@ if(ENABLE_TESTS OR ENABLE_FARSTREAM)
+     find_package(GLIB2 QUIET)
+     find_package(GObject QUIET)
+     find_package(GIO QUIET)
+-    find_package(GIOUnix QUIET)
++    if(PC_LibGIO_VERSION VERSION_LESS "2.72.0")
++        find_package(GIOUnix QUIET)
++    endif()
+     find_package(DBus QUIET)
+     find_package(DBusGLib QUIET)
+     find_package(LibXml2 QUIET)
+@@ -235,7 +237,7 @@ if (ENABLE_TESTS)
+         # need it for telepathy-glib.
+         add_definitions(-DGLIB_DISABLE_DEPRECATION_WARNINGS)
+         set(ENABLE_TP_GLIB_TESTS 1)
+-        if(GIO_FOUND AND GIOUNIX_FOUND)
++        if(GIO_FOUND AND (PC_LibGIO_VERSION VERSION_GREATER_EQUAL "2.72.0" OR GIOUNIX_FOUND))
+             set(ENABLE_TP_GLIB_GIO_TESTS 1)
+         else()
+             set(ENABLE_TP_GLIB_GIO_TESTS 0)
+diff --git a/tests/lib/glib/CMakeLists.txt b/tests/lib/glib/CMakeLists.txt
+index 2077e3012f7bbb2aa3c32fd59c060b3546ae033d..b3eaec192691fbcc203b3d04b770736feff7946b 100644
+--- a/tests/lib/glib/CMakeLists.txt
++++ b/tests/lib/glib/CMakeLists.txt
+@@ -4,10 +4,14 @@ include_directories(
+     ${GLIB2_INCLUDE_DIR}
+     ${GOBJECT_INCLUDE_DIR}
+     ${GIO_INCLUDE_DIR}
+-    ${GIOUNIX_INCLUDE_DIR}
+     ${DBUS_INCLUDE_DIR}
+     ${DBUS_ARCH_INCLUDE_DIR})
+ 
++if(PC_LibGIO_VERSION VERSION_LESS "2.72.0")
++include_directories(
++    ${GIOUNIX_INCLUDE_DIR})
++endif()
++
+ if(ENABLE_TP_GLIB_TESTS)
+     set(TPGLIB_LIBRARIES
+         ${TELEPATHY_GLIB_LIBRARIES}
