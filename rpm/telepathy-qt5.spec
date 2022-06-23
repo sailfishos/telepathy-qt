@@ -3,8 +3,8 @@ Summary:    Qt 5 Telepathy library
 Version:    0.9.8
 Release:    1
 License:    LGPLv2+
-URL:        http://telepathy.freedesktop.org/wiki/
-Source0:    http://telepathy.freedesktop.org/releases/telepathy-qt/%{name}-%{version}.tar.gz
+URL:        https://github.com/sailfishos/telepathy-qt
+Source0:    %{name}-%{version}.tar.gz
 Source1:    INSIGNIFICANT
 Source2:    mktests.sh.in
 Source3:    runDbusTest.sh.in
