@@ -14,6 +14,7 @@ Patch0:     0001-Install-tests.patch
 Patch1:     0002-Remove-assert-which-appears-invalid-for-conference-c.patch
 Patch2:     0003-Use-python3-on-tests-accountmanager.patch
 Patch3:     0004-Fix-build-with-glib-2.72.0-and-newer.patch
+Patch4:     0005-Add-missing-include-to-glib-tests.patch
 
 Requires(post): /sbin/ldconfig
 Requires(postun): /sbin/ldconfig
@@ -92,13 +93,11 @@ This package contains automated tests and tests.xml
 
 %cmake -DENABLE_TESTS=TRUE -DENABLE_FARSTREAM=TRUE -DENABLE_EXAMPLES=FALSE
 
-
-make %{?_smp_mflags}
+%make_build
 
 tests/mktests.sh > tests/tests.xml
 
 %install
-rm -rf %{buildroot}
 export QT_SELECT=5
 %make_install
 
@@ -111,13 +110,11 @@ export QT_SELECT=5
 %postun farstream -p /sbin/ldconfig
 
 %files
-%defattr(-,root,root,-)
 %license COPYING
 %{_libdir}/libtelepathy-qt5.so.*
 %{_libdir}/libtelepathy-qt5-service.so.*
 
 %files devel
-%defattr(-,root,root,-)
 %{_libdir}/libtelepathy-qt5.so
 %{_libdir}/libtelepathy-qt5-service.so
 %{_libdir}/pkgconfig/TelepathyQt5.pc
@@ -128,11 +125,9 @@ export QT_SELECT=5
 %{_libdir}/pkgconfig/TelepathyQt5Service.pc
 
 %files farstream
-%defattr(-,root,root,-)
 %{_libdir}/libtelepathy-qt5-farstream.so.*
 
 %files farstream-devel
-%defattr(-,root,root,-)
 %{_libdir}/libtelepathy-qt5-farstream.so
 %{_includedir}/telepathy-qt5/TelepathyQt/Farstream/*
 %{_libdir}/cmake/TelepathyQt5Farstream/TelepathyQt5FarstreamConfig.cmake
@@ -140,6 +135,5 @@ export QT_SELECT=5
 %{_libdir}/pkgconfig/TelepathyQt5Farstream.pc
 
 %files tests
-%defattr(-,root,root,-)
 /opt/tests/%{name}/*
 

@@ -1,0 +1,21 @@
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: =?UTF-8?q?Matti=20Lehtim=C3=A4ki?= <matti.lehtimaki@jolla.com>
+Date: Wed, 5 Feb 2025 00:17:47 +0200
+Subject: [PATCH] Add missing include to glib tests
+
+---
+ tests/lib/glib/future/extensions/CMakeLists.txt | 1 +
+ 1 file changed, 1 insertion(+)
+
+diff --git a/tests/lib/glib/future/extensions/CMakeLists.txt b/tests/lib/glib/future/extensions/CMakeLists.txt
+index 511f01b7f814f6a2f1ecbb108ac210fafd1dee54..e4f41a9a24f43c7f5ec1e687d3a7b0e299991308 100644
+--- a/tests/lib/glib/future/extensions/CMakeLists.txt
++++ b/tests/lib/glib/future/extensions/CMakeLists.txt
+@@ -60,6 +60,7 @@ if(ENABLE_TP_GLIB_TESTS)
+             ${CMAKE_SOURCE_DIR}/tools/glib-ginterface-gen.py
+                 --filename=${CMAKE_CURRENT_BINARY_DIR}/_gen/svc-${spec}
+                 --signal-marshal-prefix=NOT_NEEDED
++                --include='<telepathy-glib/dbus.h>'
+                 --include='<telepathy-glib/dbus-properties-mixin.h>'
+                 --not-implemented-func='tp_dbus_g_method_return_not_implemented'
+                 --allow-unstable
