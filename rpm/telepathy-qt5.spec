@@ -13,8 +13,6 @@ Source4:    runTest.sh.in
 Patch0:     0001-Install-tests.patch
 Patch1:     0002-Remove-assert-which-appears-invalid-for-conference-c.patch
 Patch2:     0003-Use-python3-on-tests-accountmanager.patch
-Patch3:     0004-Fix-build-with-glib-2.72.0-and-newer.patch
-Patch4:     0005-Add-missing-include-to-glib-tests.patch
 
 Requires(post): /sbin/ldconfig
 Requires(postun): /sbin/ldconfig
@@ -91,7 +89,7 @@ This package contains automated tests and tests.xml
 %__chmod 0755 tests/runTest.sh.in
 
 
-%cmake -DENABLE_TESTS=TRUE -DENABLE_FARSTREAM=TRUE -DENABLE_EXAMPLES=FALSE
+%cmake -DENABLE_TESTS=TRUE -DENABLE_FARSTREAM=TRUE -DENABLE_EXAMPLES=FALSE .
 
 %make_build
 
