@@ -9,7 +9,7 @@ Subject: [PATCH] Remove assert which appears invalid for conference call.
  1 file changed, 2 insertions(+), 2 deletions(-)
 
 diff --git a/TelepathyQt/channel.cpp b/TelepathyQt/channel.cpp
-index 2b7cde55363a706b6443a0de2d54580cc765c7f9..3a4d349a01d91f854cb4695608e3aebf2008653f 100644
+index b5849f6e..192a2da2 100644
 --- a/TelepathyQt/channel.cpp
 +++ b/TelepathyQt/channel.cpp
 @@ -3491,8 +3491,8 @@ void Channel::gotConferenceChannelRemovedActorContact(PendingOperation *op)

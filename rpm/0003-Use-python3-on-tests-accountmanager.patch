@@ -8,7 +8,7 @@ Subject: [PATCH] Use python3 on tests' accountmanager
  1 file changed, 1 insertion(+), 1 deletion(-)
 
 diff --git a/tests/lib/python/account-manager.py b/tests/lib/python/account-manager.py
-index cad1fc4268e9ed0196d7771a8516837daeebcac0..1956a6aa56e174bfd784c0c1dee842d751259d29 100755
+index cad1fc42..1956a6aa 100755
 --- a/tests/lib/python/account-manager.py
 +++ b/tests/lib/python/account-manager.py
 @@ -1,4 +1,4 @@
